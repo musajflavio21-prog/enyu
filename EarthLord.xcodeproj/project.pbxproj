@@ -6,13 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		4B7D97052EFEC11800A16155 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 4B7D97042EFEC11800A16155 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		4B7D95FA2EFAD9DE00A16155 /* EarthLord.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EarthLord.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4B7D97022EFEC11100A16155 /* Exceptions for "EarthLord" folder in "EarthLord" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4B7D95F92EFAD9DE00A16155 /* EarthLord */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4B7D95FC2EFAD9DE00A16155 /* EarthLord */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4B7D97022EFEC11100A16155 /* Exceptions for "EarthLord" folder in "EarthLord" target */,
+			);
 			path = EarthLord;
 			sourceTree = "<group>";
 		};
@@ -23,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4B7D97052EFEC11800A16155 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -33,6 +51,7 @@
 			isa = PBXGroup;
 			children = (
 				4B7D95FC2EFAD9DE00A16155 /* EarthLord */,
+				4B7D97032EFEC11800A16155 /* Frameworks */,
 				4B7D95FB2EFAD9DE00A16155 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -43,6 +62,13 @@
 				4B7D95FA2EFAD9DE00A16155 /* EarthLord.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		4B7D97032EFEC11800A16155 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -65,6 +91,7 @@
 			);
 			name = EarthLord;
 			packageProductDependencies = (
+				4B7D97042EFEC11800A16155 /* Supabase */,
 			);
 			productName = EarthLord;
 			productReference = 4B7D95FA2EFAD9DE00A16155 /* EarthLord.app */;
@@ -94,6 +121,9 @@
 			);
 			mainGroup = 4B7D95F12EFAD9DE00A16155;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4B7D97002EFEBF9E00A16155 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4B7D95FB2EFAD9DE00A16155 /* Products */;
 			projectDirPath = "";
@@ -256,11 +286,11 @@
 				DEVELOPMENT_TEAM = TWGB25XGJV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EarthLord/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -288,11 +318,11 @@
 				DEVELOPMENT_TEAM = TWGB25XGJV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EarthLord/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -332,6 +362,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4B7D97002EFEBF9E00A16155 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4B7D97042EFEC11800A16155 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4B7D97002EFEBF9E00A16155 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 4B7D95F22EFAD9DE00A16155 /* Project object */;
 }
