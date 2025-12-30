@@ -8,8 +8,6 @@
 import SwiftUI
 
 struct MoreTabView: View {
-    @EnvironmentObject var authManager: AuthManager
-
     var body: some View {
         NavigationStack {
             List {
@@ -65,27 +63,6 @@ struct MoreTabView: View {
                     .foregroundColor(.secondary)
                 } header: {
                     Text("其他")
-                }
-
-                // 登出按钮
-                Section {
-                    Button(action: {
-                        Task {
-                            await authManager.signOut()
-                        }
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .font(.title2)
-                                .foregroundColor(.red)
-                                .frame(width: 32)
-
-                            Text("退出登录")
-                                .font(.body)
-                                .foregroundColor(.red)
-                        }
-                        .padding(.vertical, 4)
-                    }
                 }
             }
             .navigationTitle("更多")
