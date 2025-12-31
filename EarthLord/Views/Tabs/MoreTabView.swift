@@ -9,11 +9,51 @@ import SwiftUI
 
 struct MoreTabView: View {
     @EnvironmentObject var authManager: AuthManager
+    @ObservedObject private var languageManager = LanguageManager.shared
 
     var body: some View {
         NavigationStack {
             List {
-                // Supabase Test Section
+                // 设置区域
+                Section {
+                    // 语言设置
+                    NavigationLink {
+                        LanguageSettingsView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "globe")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                                .frame(width: 32)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("语言设置")
+                                    .font(.body)
+                                Text(languageManager.currentLanguage.displayName)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    // 通用设置（占位）
+                    HStack(spacing: 12) {
+                        Image(systemName: "gearshape")
+                            .font(.title2)
+                            .foregroundColor(.gray)
+                            .frame(width: 32)
+
+                        Text("通用设置")
+                            .font(.body)
+                    }
+                    .padding(.vertical, 4)
+                    .foregroundColor(.secondary)
+                } header: {
+                    Text("设置")
+                }
+
+                // 开发工具区域
                 Section {
                     NavigationLink {
                         SupabaseTestView()
@@ -38,20 +78,8 @@ struct MoreTabView: View {
                     Text("开发工具")
                 }
 
-                // Future sections placeholder
+                // 其他区域
                 Section {
-                    HStack(spacing: 12) {
-                        Image(systemName: "gearshape")
-                            .font(.title2)
-                            .foregroundColor(.gray)
-                            .frame(width: 32)
-
-                        Text("设置")
-                            .font(.body)
-                    }
-                    .padding(.vertical, 4)
-                    .foregroundColor(.secondary)
-
                     HStack(spacing: 12) {
                         Image(systemName: "info.circle")
                             .font(.title2)
@@ -95,4 +123,5 @@ struct MoreTabView: View {
 
 #Preview {
     MoreTabView()
+        .environmentObject(AuthManager.shared)
 }

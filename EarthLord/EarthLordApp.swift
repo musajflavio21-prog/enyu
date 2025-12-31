@@ -7,6 +7,7 @@
 
 import SwiftUI
 import GoogleSignIn
+import Combine
 
 @main
 struct EarthLordApp: App {
@@ -15,6 +16,22 @@ struct EarthLordApp: App {
 
     /// 启动画面是否已完成
     @State private var splashFinished = false
+
+    /// 当前语言（用于触发视图刷新）
+    @State private var currentLanguage: AppLanguage = LanguageManager.shared.currentLanguage
+
+    /// 根据语言设置返回对应的 Locale
+    private func localeForLanguage(_ language: AppLanguage) -> Locale {
+        switch language {
+        case .system:
+            // 跟随系统：使用系统首选语言
+            return Locale.current
+        case .zhHans:
+            return Locale(identifier: "zh-Hans")
+        case .en:
+            return Locale(identifier: "en")
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -35,6 +52,12 @@ struct EarthLordApp: App {
                         .transition(.opacity)
                         .environmentObject(authManager)
                 }
+            }
+            // 当语言变化时强制刷新整个视图树
+            .id(currentLanguage)
+            .environment(\.locale, localeForLanguage(currentLanguage))
+            .onReceive(LanguageManager.shared.$currentLanguage) { newLanguage in
+                currentLanguage = newLanguage
             }
             .animation(.easeInOut(duration: 0.3), value: splashFinished)
             .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
