@@ -176,7 +176,7 @@ struct SplashView: View {
         // 完成加载，进入下一页面
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.8) {
             withAnimation(.easeInOut(duration: 0.3)) {
-                isFinished = false
+                isFinished = true
             }
         }
     }

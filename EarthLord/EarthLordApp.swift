@@ -6,22 +6,23 @@
 //
 
 import SwiftUI
+import GoogleSignIn
 
 @main
 struct EarthLordApp: App {
     /// 认证管理器（全局状态）
     @StateObject private var authManager = AuthManager.shared
 
-    /// 是否显示启动画面
-    @State private var showSplash = true
+    /// 启动画面是否已完成
+    @State private var splashFinished = false
 
     var body: some Scene {
         WindowGroup {
             ZStack {
                 // 根据认证状态显示不同页面
-                if showSplash {
+                if !splashFinished {
                     // 启动画面
-                    SplashView(isFinished: $showSplash)
+                    SplashView(isFinished: $splashFinished)
                         .transition(.opacity)
                 } else if authManager.isAuthenticated {
                     // 已登录：显示主界面
@@ -35,8 +36,18 @@ struct EarthLordApp: App {
                         .environmentObject(authManager)
                 }
             }
-            .animation(.easeInOut(duration: 0.3), value: showSplash)
+            .animation(.easeInOut(duration: 0.3), value: splashFinished)
             .animation(.easeInOut(duration: 0.3), value: authManager.isAuthenticated)
+            // 处理 URL 回调（Google Sign-In）
+            .onOpenURL { url in
+                print("🔵 [App] 收到 URL 回调: \(url)")
+                print("🔵 [App] URL Scheme: \(url.scheme ?? "无")")
+                print("🔵 [App] URL Host: \(url.host ?? "无")")
+
+                // 尝试让 Google Sign-In 处理 URL
+                let handled = GIDSignIn.sharedInstance.handle(url)
+                print("🔵 [App] Google Sign-In 处理结果: \(handled ? "已处理" : "未处理")")
+            }
         }
     }
 }
