@@ -10,16 +10,16 @@
 		4B7D97052EFEC11800A16155 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 4B7D97042EFEC11800A16155 /* Supabase */; };
 		4B7D994C2F04186200A16155 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 4B7D994B2F04186200A16155 /* GoogleSignIn */; };
 		4B7D994E2F04186200A16155 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 4B7D994D2F04186200A16155 /* GoogleSignInSwift */; };
-		4B7D9A9E2F054DE700A16155 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 4B7D9A9D2F054DE700A16155 /* Localizable.xcstrings */; };
+		4BA551062F07F23D00D84B3E /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 4BA551052F07F23D00D84B3E /* Localizable.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		4B7D95FA2EFAD9DE00A16155 /* EarthLord.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EarthLord.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4B7D9A9D2F054DE700A16155 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		4BA551052F07F23D00D84B3E /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		4B7D97022EFEC11100A16155 /* Exceptions for "EarthLord" folder in "EarthLord" target */ = {
+		4B7D95FC2EFAD9DE00A16156 /* Exceptions for "EarthLord" folder in "EarthLord" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -32,7 +32,7 @@
 		4B7D95FC2EFAD9DE00A16155 /* EarthLord */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				4B7D97022EFEC11100A16155 /* Exceptions for "EarthLord" folder in "EarthLord" target */,
+				4B7D95FC2EFAD9DE00A16156 /* Exceptions for "EarthLord" folder in "EarthLord" target */,
 			);
 			path = EarthLord;
 			sourceTree = "<group>";
@@ -56,7 +56,7 @@
 		4B7D95F12EFAD9DE00A16155 = {
 			isa = PBXGroup;
 			children = (
-				4B7D9A9D2F054DE700A16155 /* Localizable.xcstrings */,
+				4BA551052F07F23D00D84B3E /* Localizable.xcstrings */,
 				4B7D95FC2EFAD9DE00A16155 /* EarthLord */,
 				4B7D97032EFEC11800A16155 /* Frameworks */,
 				4B7D95FB2EFAD9DE00A16155 /* Products */,
@@ -150,7 +150,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4B7D9A9E2F054DE700A16155 /* Localizable.xcstrings in Resources */,
+				4BA551062F07F23D00D84B3E /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -305,6 +305,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -337,6 +338,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
