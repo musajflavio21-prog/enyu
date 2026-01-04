@@ -3,7 +3,7 @@
 //  EarthLord
 //
 //  MKMapView 的 SwiftUI 包装器
-//  提供末世风格的地图显示，支持用户位置追踪和自动居中
+//  提供末世风格的地图显示，支持用户位置追踪、自动居中和路径绘制
 //
 
 import SwiftUI
@@ -20,6 +20,20 @@ struct MapViewRepresentable: UIViewRepresentable {
 
     /// 是否已完成首次定位（防止重复居中）
     @Binding var hasLocatedUser: Bool
+
+    /// 路径坐标数组（用于绘制圈地轨迹）
+    @Binding var pathCoordinates: [CLLocationCoordinate2D]
+
+    /// 路径更新版本号（触发更新）
+    @Binding var pathUpdateVersion: Int
+
+    /// 是否正在追踪
+    @Binding var isTracking: Bool
+
+    // MARK: - 轨迹标识符
+
+    /// 轨迹 Overlay 的标识符
+    private static let trackingOverlayIdentifier = "trackingPath"
 
     // MARK: - UIViewRepresentable
 
@@ -49,8 +63,11 @@ struct MapViewRepresentable: UIViewRepresentable {
         mapView.showsCompass = true
         mapView.showsScale = true
 
-        // 设置代理（关键！否则 didUpdate userLocation 不会被调用）
+        // 设置代理（关键！否则代理方法不会被调用）
         mapView.delegate = context.coordinator
+
+        // 保存 mapView 引用到 Coordinator
+        context.coordinator.mapView = mapView
 
         // 应用末世滤镜效果
         applyApocalypseFilter(to: mapView)
@@ -69,8 +86,8 @@ struct MapViewRepresentable: UIViewRepresentable {
 
     /// 更新 MKMapView（SwiftUI 状态变化时调用）
     func updateUIView(_ mapView: MKMapView, context: Context) {
-        // 大部分更新由 Coordinator 处理
-        // 这里保持空实现，避免不必要的更新
+        // 更新路径轨迹
+        context.coordinator.updateTrackingPath(coordinates: pathCoordinates, on: mapView)
     }
 
     /// 创建协调器
@@ -81,9 +98,6 @@ struct MapViewRepresentable: UIViewRepresentable {
     // MARK: - 末世滤镜效果
 
     /// 应用末世风格滤镜
-    /// - 降低饱和度：让颜色更加暗淡
-    /// - 棕褐色调：添加废土泛黄效果
-    /// - 降低亮度：整体变暗
     private func applyApocalypseFilter(to mapView: MKMapView) {
         // 色调控制：降低饱和度和亮度
         guard let colorControls = CIFilter(name: "CIColorControls") else { return }
@@ -103,24 +117,92 @@ struct MapViewRepresentable: UIViewRepresentable {
     // MARK: - Coordinator（地图代理）
 
     /// 协调器类
-    /// 处理 MKMapView 的代理回调
+    /// 处理 MKMapView 的代理回调和轨迹绘制
     class Coordinator: NSObject, MKMapViewDelegate {
 
         /// 父视图引用
         var parent: MapViewRepresentable
 
+        /// MapView 引用
+        weak var mapView: MKMapView?
+
         /// 是否已完成首次居中（防止重复居中）
         private var hasInitialCentered = false
+
+        /// 当前轨迹 Overlay
+        private var currentTrackingOverlay: MKPolyline?
+
+        /// 上次更新的坐标数量（用于判断是否需要更新）
+        private var lastCoordinateCount = 0
 
         init(_ parent: MapViewRepresentable) {
             self.parent = parent
             super.init()
         }
 
+        // MARK: - 轨迹绘制
+
+        /// 更新追踪路径
+        /// - Parameters:
+        ///   - coordinates: 路径坐标数组
+        ///   - mapView: 地图视图
+        func updateTrackingPath(coordinates: [CLLocationCoordinate2D], on mapView: MKMapView) {
+            // 检查是否需要更新
+            guard coordinates.count != lastCoordinateCount || coordinates.count < 2 else {
+                return
+            }
+
+            lastCoordinateCount = coordinates.count
+
+            // 移除旧的轨迹
+            if let oldOverlay = currentTrackingOverlay {
+                mapView.removeOverlay(oldOverlay)
+                currentTrackingOverlay = nil
+            }
+
+            // 如果坐标少于2个点，不绘制
+            guard coordinates.count >= 2 else {
+                print("📍 [轨迹] 坐标点不足，跳过绘制")
+                return
+            }
+
+            // 转换坐标（WGS-84 -> GCJ-02）
+            let convertedCoordinates = CoordinateConverter.convertCoordinates(coordinates)
+
+            // 创建新的轨迹线
+            let polyline = MKPolyline(coordinates: convertedCoordinates, count: convertedCoordinates.count)
+            polyline.title = MapViewRepresentable.trackingOverlayIdentifier
+
+            // 添加到地图
+            mapView.addOverlay(polyline)
+            currentTrackingOverlay = polyline
+
+            print("📍 [轨迹] 更新轨迹，共 \(coordinates.count) 个点")
+        }
+
         // MARK: - MKMapViewDelegate
 
+        /// ⭐ 关键方法：渲染 Overlay（轨迹线）
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let polyline = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: polyline)
+
+                // 末世风格轨迹样式
+                renderer.strokeColor = UIColor(ApocalypseTheme.primary).withAlphaComponent(0.9)
+                renderer.lineWidth = 5.0
+                renderer.lineCap = .round
+                renderer.lineJoin = .round
+
+                // 添加发光效果（通过阴影模拟）
+                renderer.alpha = 1.0
+
+                return renderer
+            }
+
+            return MKOverlayRenderer(overlay: overlay)
+        }
+
         /// ⭐ 关键方法：用户位置更新时调用
-        /// 这是地图自动居中的核心实现
         func mapView(_ mapView: MKMapView, didUpdate userLocation: MKUserLocation) {
             // 获取位置
             guard let location = userLocation.location else {
@@ -138,7 +220,6 @@ struct MapViewRepresentable: UIViewRepresentable {
 
             // 首次获得位置时，自动居中地图
             guard !hasInitialCentered else {
-                // 已经居中过了，不再自动居中（避免干扰用户手动拖动）
                 return
             }
 
@@ -165,7 +246,6 @@ struct MapViewRepresentable: UIViewRepresentable {
 
         /// 地图区域变化回调
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
-            // 可以在这里处理地图缩放/拖动后的逻辑
             let center = mapView.region.center
             print("🗺️ [地图] 区域变化: (\(center.latitude), \(center.longitude))")
         }
@@ -184,6 +264,25 @@ struct MapViewRepresentable: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, didFailToLocateUserWithError error: Error) {
             print("❌ [地图] 用户位置追踪失败: \(error.localizedDescription)")
         }
+
+        // MARK: - 辅助方法
+
+        /// 重置首次居中标志（允许重新居中）
+        func resetInitialCentered() {
+            hasInitialCentered = false
+        }
+
+        /// 居中到指定位置
+        func centerToLocation(_ coordinate: CLLocationCoordinate2D, animated: Bool = true) {
+            guard let mapView = mapView else { return }
+
+            let region = MKCoordinateRegion(
+                center: coordinate,
+                latitudinalMeters: 500,
+                longitudinalMeters: 500
+            )
+            mapView.setRegion(region, animated: animated)
+        }
     }
 }
 
@@ -192,6 +291,9 @@ struct MapViewRepresentable: UIViewRepresentable {
 #Preview {
     MapViewRepresentable(
         userLocation: .constant(nil),
-        hasLocatedUser: .constant(false)
+        hasLocatedUser: .constant(false),
+        pathCoordinates: .constant([]),
+        pathUpdateVersion: .constant(0),
+        isTracking: .constant(false)
     )
 }

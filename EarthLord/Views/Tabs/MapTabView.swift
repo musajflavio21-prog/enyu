@@ -3,7 +3,7 @@
 //  EarthLord
 //
 //  地图页面
-//  显示末世风格地图，支持用户定位和位置追踪
+//  显示末世风格地图，支持用户定位、位置追踪和圈地功能
 //
 
 import SwiftUI
@@ -25,6 +25,12 @@ struct MapTabView: View {
     /// 是否显示坐标信息
     @State private var showCoordinateInfo = true
 
+    /// 追踪信息刷新计时器
+    @State private var trackingInfoTimer: Timer?
+
+    /// 用于刷新追踪信息的触发器
+    @State private var trackingInfoRefresh = false
+
     // MARK: - 视图
 
     var body: some View {
@@ -32,23 +38,37 @@ struct MapTabView: View {
             // 地图视图
             MapViewRepresentable(
                 userLocation: $userLocation,
-                hasLocatedUser: $hasLocatedUser
+                hasLocatedUser: $hasLocatedUser,
+                pathCoordinates: $locationManager.pathCoordinates,
+                pathUpdateVersion: $locationManager.pathUpdateVersion,
+                isTracking: $locationManager.isTracking
             )
             .ignoresSafeArea()
 
             // 覆盖层
             VStack {
-                // 顶部坐标信息卡片
+                // 顶部信息卡片
                 if showCoordinateInfo {
-                    coordinateInfoCard
-                        .padding(.top, 60)
-                        .padding(.horizontal, 16)
+                    if locationManager.isTracking {
+                        trackingInfoCard
+                            .padding(.top, 60)
+                            .padding(.horizontal, 16)
+                    } else {
+                        coordinateInfoCard
+                            .padding(.top, 60)
+                            .padding(.horizontal, 16)
+                    }
                 }
 
                 Spacer()
 
                 // 底部控制按钮
-                HStack {
+                HStack(alignment: .bottom) {
+                    // 圈地按钮
+                    trackingButton
+                        .padding(.leading, 16)
+                        .padding(.bottom, 120)
+
                     Spacer()
 
                     // 定位按钮
@@ -72,12 +92,115 @@ struct MapTabView: View {
             }
         }
         .onDisappear {
-            // 页面消失时停止定位（节省电量）
-            // locationManager.stopUpdatingLocation()
+            // 页面消失时停止追踪信息刷新
+            trackingInfoTimer?.invalidate()
+            trackingInfoTimer = nil
+        }
+        .onChange(of: locationManager.isTracking) { _, isTracking in
+            if isTracking {
+                // 开始追踪时，启动定时器刷新追踪信息
+                startTrackingInfoTimer()
+            } else {
+                // 停止追踪时，停止定时器
+                trackingInfoTimer?.invalidate()
+                trackingInfoTimer = nil
+            }
+        }
+    }
+
+    // MARK: - 追踪信息刷新
+
+    private func startTrackingInfoTimer() {
+        trackingInfoTimer?.invalidate()
+        trackingInfoTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            trackingInfoRefresh.toggle()
         }
     }
 
     // MARK: - 子视图
+
+    /// 追踪信息卡片（圈地模式）
+    private var trackingInfoCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // 标题
+            HStack {
+                // 闪烁的录制指示器
+                Circle()
+                    .fill(ApocalypseTheme.danger)
+                    .frame(width: 10, height: 10)
+                    .opacity(trackingInfoRefresh ? 1.0 : 0.3)
+                    .animation(.easeInOut(duration: 0.5), value: trackingInfoRefresh)
+
+                Text("正在圈地")
+                    .font(.headline)
+                    .foregroundColor(ApocalypseTheme.textPrimary)
+
+                Spacer()
+
+                // 关闭按钮
+                Button(action: {
+                    withAnimation {
+                        showCoordinateInfo = false
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+            }
+
+            // 追踪统计
+            HStack(spacing: 24) {
+                // 时长
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("时长")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                    Text(locationManager.trackingDurationString)
+                        .font(.system(.title3, design: .monospaced))
+                        .fontWeight(.semibold)
+                        .foregroundColor(ApocalypseTheme.primary)
+                        .id(trackingInfoRefresh) // 强制刷新
+                }
+
+                // 距离
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("距离")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                    Text(locationManager.trackingDistanceString)
+                        .font(.system(.title3, design: .monospaced))
+                        .fontWeight(.semibold)
+                        .foregroundColor(ApocalypseTheme.textPrimary)
+                }
+
+                // 点数
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("坐标点")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                    Text("\(locationManager.pathCoordinates.count)")
+                        .font(.system(.title3, design: .monospaced))
+                        .fontWeight(.semibold)
+                        .foregroundColor(ApocalypseTheme.textPrimary)
+                }
+            }
+
+            // 提示
+            Text("走动以绘制领地边界，完成后点击结束")
+                .font(.caption)
+                .foregroundColor(ApocalypseTheme.textSecondary)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(ApocalypseTheme.cardBackground.opacity(0.95))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(ApocalypseTheme.primary.opacity(0.5), lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+    }
 
     /// 坐标信息卡片
     private var coordinateInfoCard: some View {
@@ -152,6 +275,40 @@ struct MapTabView: View {
                 .fill(ApocalypseTheme.cardBackground.opacity(0.95))
         )
         .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+    }
+
+    /// 圈地按钮
+    private var trackingButton: some View {
+        Button(action: {
+            if locationManager.isTracking {
+                // 停止圈地
+                locationManager.stopPathTracking()
+            } else {
+                // 开始圈地
+                locationManager.startPathTracking()
+                // 显示信息卡片
+                withAnimation {
+                    showCoordinateInfo = true
+                }
+            }
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: locationManager.isTracking ? "stop.fill" : "flag.fill")
+                    .font(.system(size: 16))
+                Text(locationManager.isTracking ? "结束圈地" : "开始圈地")
+                    .font(.headline)
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 25)
+                    .fill(locationManager.isTracking ? ApocalypseTheme.danger : ApocalypseTheme.primary)
+            )
+            .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 3)
+        }
+        .disabled(!locationManager.isAuthorized)
+        .opacity(locationManager.isAuthorized ? 1.0 : 0.5)
     }
 
     /// 定位按钮

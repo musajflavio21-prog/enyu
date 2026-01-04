@@ -33,10 +33,36 @@ class LocationManager: NSObject, ObservableObject {
     /// 是否正在定位
     @Published var isUpdatingLocation = false
 
+    // MARK: - 路径追踪属性
+
+    /// 是否正在追踪路径（圈地模式）
+    @Published var isTracking = false
+
+    /// 追踪的路径坐标数组
+    @Published var pathCoordinates: [CLLocationCoordinate2D] = []
+
+    /// 路径更新版本号（用于触发 SwiftUI 更新）
+    @Published var pathUpdateVersion: Int = 0
+
+    /// 追踪开始时间
+    @Published var trackingStartTime: Date?
+
+    /// 追踪的总距离（米）
+    @Published var trackingDistance: Double = 0
+
     // MARK: - 私有属性
 
     /// CoreLocation 定位管理器
     private let locationManager = CLLocationManager()
+
+    /// 路径追踪定时器
+    private var trackingTimer: Timer?
+
+    /// 最小记录距离（米）- 移动超过此距离才记录新点
+    private let minTrackingDistance: Double = 10.0
+
+    /// 追踪定时器间隔（秒）
+    private let trackingInterval: TimeInterval = 2.0
 
     // MARK: - 计算属性
 
@@ -122,6 +148,122 @@ class LocationManager: NSObject, ObservableObject {
     func openSettings() {
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
+        }
+    }
+
+    // MARK: - 路径追踪方法
+
+    /// 开始路径追踪（圈地模式）
+    func startPathTracking() {
+        guard isAuthorized else {
+            print("⚠️ [圈地] 未获得定位授权，无法开始圈地")
+            return
+        }
+
+        guard !isTracking else {
+            print("⚠️ [圈地] 已在追踪中")
+            return
+        }
+
+        print("🏁 [圈地] 开始路径追踪")
+
+        // 重置状态
+        isTracking = true
+        pathCoordinates = []
+        trackingDistance = 0
+        trackingStartTime = Date()
+        pathUpdateVersion += 1
+
+        // 确保定位服务正在运行
+        if !isUpdatingLocation {
+            startUpdatingLocation()
+        }
+
+        // 如果当前有位置，添加为起点
+        if let currentLocation = userLocation {
+            pathCoordinates.append(currentLocation)
+            print("🏁 [圈地] 添加起点: (\(currentLocation.latitude), \(currentLocation.longitude))")
+        }
+
+        // 启动定时器，每隔一段时间记录位置
+        trackingTimer = Timer.scheduledTimer(withTimeInterval: trackingInterval, repeats: true) { [weak self] _ in
+            self?.recordCurrentPosition()
+        }
+    }
+
+    /// 停止路径追踪
+    func stopPathTracking() {
+        guard isTracking else {
+            print("⚠️ [圈地] 未在追踪中")
+            return
+        }
+
+        print("🏁 [圈地] 停止路径追踪，共记录 \(pathCoordinates.count) 个点")
+
+        // 停止定时器
+        trackingTimer?.invalidate()
+        trackingTimer = nil
+
+        // 更新状态
+        isTracking = false
+        pathUpdateVersion += 1
+    }
+
+    /// 清除路径数据
+    func clearPath() {
+        print("🗑️ [圈地] 清除路径数据")
+        pathCoordinates = []
+        trackingDistance = 0
+        trackingStartTime = nil
+        pathUpdateVersion += 1
+    }
+
+    /// 记录当前位置到路径
+    private func recordCurrentPosition() {
+        guard isTracking else { return }
+
+        guard let currentLocation = userLocation else {
+            print("⚠️ [圈地] 当前位置为空，跳过记录")
+            return
+        }
+
+        // 检查是否需要记录（距离上一个点超过最小距离）
+        if let lastCoordinate = pathCoordinates.last {
+            let lastLocation = CLLocation(latitude: lastCoordinate.latitude, longitude: lastCoordinate.longitude)
+            let currentCLLocation = CLLocation(latitude: currentLocation.latitude, longitude: currentLocation.longitude)
+            let distance = currentCLLocation.distance(from: lastLocation)
+
+            if distance < minTrackingDistance {
+                print("📍 [圈地] 移动距离 \(String(format: "%.1f", distance))m < \(minTrackingDistance)m，跳过记录")
+                return
+            }
+
+            // 累加距离
+            trackingDistance += distance
+        }
+
+        // 记录新位置
+        pathCoordinates.append(currentLocation)
+        pathUpdateVersion += 1
+
+        print("📍 [圈地] 记录位置 #\(pathCoordinates.count): (\(String(format: "%.6f", currentLocation.latitude)), \(String(format: "%.6f", currentLocation.longitude)))")
+    }
+
+    /// 获取追踪时长（格式化字符串）
+    var trackingDurationString: String {
+        guard let startTime = trackingStartTime else { return "00:00" }
+        let duration = Date().timeIntervalSince(startTime)
+        let minutes = Int(duration) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    /// 获取追踪距离（格式化字符串）
+    var trackingDistanceString: String {
+        if trackingDistance < 1000 {
+            return String(format: "%.0f 米", trackingDistance)
+        } else {
+            return String(format: "%.2f 公里", trackingDistance / 1000)
         }
     }
 
