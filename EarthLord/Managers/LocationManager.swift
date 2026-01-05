@@ -50,6 +50,40 @@ class LocationManager: NSObject, ObservableObject {
     /// 追踪的总距离（米）
     @Published var trackingDistance: Double = 0
 
+    // MARK: - 闭环检测属性
+
+    /// 路径是否已闭环（走回起点）
+    @Published var isPathClosed = false
+
+    /// 闭环距离阈值（米）- 距离起点小于此值视为闭环
+    private let closureDistanceThreshold: Double = 30.0
+
+    /// 最少路径点数 - 至少需要这么多点才能判断闭环
+    private let minimumPathPoints: Int = 10
+
+    // MARK: - 速度检测属性
+
+    /// 速度警告信息
+    @Published var speedWarning: String?
+
+    /// 是否超速
+    @Published var isOverSpeed = false
+
+    /// 当前速度（km/h）
+    @Published var currentSpeed: Double = 0
+
+    /// 上次位置记录时间
+    private var lastLocationTimestamp: Date?
+
+    /// 上次位置坐标
+    private var lastRecordedLocation: CLLocationCoordinate2D?
+
+    /// 速度警告阈值（km/h）
+    private let speedWarningThreshold: Double = 15.0
+
+    /// 速度停止阈值（km/h）- 超过此速度自动停止追踪
+    private let speedStopThreshold: Double = 30.0
+
     // MARK: - 私有属性
 
     /// CoreLocation 定位管理器
@@ -167,11 +201,20 @@ class LocationManager: NSObject, ObservableObject {
 
         print("🏁 [圈地] 开始路径追踪")
 
+        // 记录日志
+        TerritoryLogger.shared.log("开始圈地追踪", type: .info)
+
         // 重置状态
         isTracking = true
         pathCoordinates = []
         trackingDistance = 0
         trackingStartTime = Date()
+        isPathClosed = false
+        speedWarning = nil
+        isOverSpeed = false
+        currentSpeed = 0
+        lastLocationTimestamp = nil
+        lastRecordedLocation = nil
         pathUpdateVersion += 1
 
         // 确保定位服务正在运行
@@ -200,6 +243,9 @@ class LocationManager: NSObject, ObservableObject {
 
         print("🏁 [圈地] 停止路径追踪，共记录 \(pathCoordinates.count) 个点")
 
+        // 记录日志
+        TerritoryLogger.shared.log("停止追踪，共 \(pathCoordinates.count) 个点", type: .info)
+
         // 停止定时器
         trackingTimer?.invalidate()
         trackingTimer = nil
@@ -215,7 +261,125 @@ class LocationManager: NSObject, ObservableObject {
         pathCoordinates = []
         trackingDistance = 0
         trackingStartTime = nil
+        isPathClosed = false
+        speedWarning = nil
+        isOverSpeed = false
+        currentSpeed = 0
+        lastLocationTimestamp = nil
+        lastRecordedLocation = nil
         pathUpdateVersion += 1
+    }
+
+    // MARK: - 闭环检测方法
+
+    /// 检查路径是否闭环（走回起点）
+    private func checkPathClosure() {
+        // 已经闭环则不再检测
+        guard !isPathClosed else { return }
+
+        // 检查点数是否足够
+        guard pathCoordinates.count >= minimumPathPoints else {
+            print("🔄 [闭环] 点数不足：\(pathCoordinates.count) < \(minimumPathPoints)")
+            return
+        }
+
+        // 获取起点和当前位置
+        guard let startPoint = pathCoordinates.first,
+              let currentPoint = pathCoordinates.last else {
+            return
+        }
+
+        // 计算当前位置到起点的距离
+        let startLocation = CLLocation(latitude: startPoint.latitude, longitude: startPoint.longitude)
+        let currentLocation = CLLocation(latitude: currentPoint.latitude, longitude: currentPoint.longitude)
+        let distanceToStart = currentLocation.distance(from: startLocation)
+
+        print("🔄 [闭环] 检测中... 距离起点: \(String(format: "%.1f", distanceToStart))m，阈值: \(closureDistanceThreshold)m")
+
+        // 记录闭环检测日志
+        TerritoryLogger.shared.log("距起点 \(String(format: "%.1f", distanceToStart))m (需≤30m)", type: .info)
+
+        // 判断是否闭环
+        if distanceToStart <= closureDistanceThreshold {
+            isPathClosed = true
+            pathUpdateVersion += 1
+            print("✅ [闭环] 路径已闭环！距离起点 \(String(format: "%.1f", distanceToStart))m")
+
+            // 记录闭环成功日志
+            TerritoryLogger.shared.log("闭环成功！距起点 \(String(format: "%.1f", distanceToStart))m", type: .success)
+        }
+    }
+
+    // MARK: - 速度检测方法
+
+    /// 验证移动速度
+    /// - Parameter newLocation: 新位置
+    /// - Returns: true 表示速度正常可以继续，false 表示速度异常
+    private func validateMovementSpeed(newLocation: CLLocationCoordinate2D) -> Bool {
+        let now = Date()
+
+        // 首次记录，初始化基准
+        guard let lastTimestamp = lastLocationTimestamp,
+              let lastLocation = lastRecordedLocation else {
+            lastLocationTimestamp = now
+            lastRecordedLocation = newLocation
+            currentSpeed = 0
+            return true
+        }
+
+        // 计算时间差（秒）
+        let timeDiff = now.timeIntervalSince(lastTimestamp)
+        guard timeDiff > 0 else { return true }
+
+        // 计算距离（米）
+        let lastCLLocation = CLLocation(latitude: lastLocation.latitude, longitude: lastLocation.longitude)
+        let newCLLocation = CLLocation(latitude: newLocation.latitude, longitude: newLocation.longitude)
+        let distance = newCLLocation.distance(from: lastCLLocation)
+
+        // 计算速度（km/h）
+        let speedMps = distance / timeDiff  // 米/秒
+        let speedKmh = speedMps * 3.6       // 转换为 km/h
+        currentSpeed = speedKmh
+
+        // 更新基准
+        lastLocationTimestamp = now
+        lastRecordedLocation = newLocation
+
+        print("🏃 [速度] 当前速度: \(String(format: "%.1f", speedKmh)) km/h")
+
+        // 超过停止阈值（30 km/h）- 自动停止追踪
+        if speedKmh > speedStopThreshold {
+            speedWarning = "速度过快（\(String(format: "%.0f", speedKmh)) km/h），已自动暂停追踪"
+            isOverSpeed = true
+            print("🚨 [速度] 超速停止！速度 \(String(format: "%.1f", speedKmh)) km/h > \(speedStopThreshold) km/h")
+
+            // 记录超速停止日志
+            TerritoryLogger.shared.log("超速 \(String(format: "%.1f", speedKmh)) km/h，已停止追踪", type: .error)
+
+            stopPathTracking()
+            return false
+        }
+
+        // 超过警告阈值（15 km/h）
+        if speedKmh > speedWarningThreshold {
+            speedWarning = "移动速度较快（\(String(format: "%.0f", speedKmh)) km/h），请步行圈地"
+            isOverSpeed = true
+            print("⚠️ [速度] 速度警告！速度 \(String(format: "%.1f", speedKmh)) km/h > \(speedWarningThreshold) km/h")
+
+            // 记录速度警告日志
+            TerritoryLogger.shared.log("速度较快 \(String(format: "%.1f", speedKmh)) km/h", type: .warning)
+
+            return true  // 警告但继续记录
+        }
+
+        // 速度正常
+        if isOverSpeed {
+            speedWarning = nil
+            isOverSpeed = false
+            print("✅ [速度] 速度恢复正常")
+        }
+
+        return true
     }
 
     /// 记录当前位置到路径
@@ -224,6 +388,12 @@ class LocationManager: NSObject, ObservableObject {
 
         guard let currentLocation = userLocation else {
             print("⚠️ [圈地] 当前位置为空，跳过记录")
+            return
+        }
+
+        // 速度检测（放在距离检测之前）
+        guard validateMovementSpeed(newLocation: currentLocation) else {
+            print("🚨 [圈地] 速度异常，停止记录")
             return
         }
 
@@ -246,7 +416,24 @@ class LocationManager: NSObject, ObservableObject {
         pathCoordinates.append(currentLocation)
         pathUpdateVersion += 1
 
+        // 计算与上一点的距离（用于日志显示）
+        let distanceFromLast: Double
+        if pathCoordinates.count > 1 {
+            let prevCoord = pathCoordinates[pathCoordinates.count - 2]
+            let prevLocation = CLLocation(latitude: prevCoord.latitude, longitude: prevCoord.longitude)
+            let currLocation = CLLocation(latitude: currentLocation.latitude, longitude: currentLocation.longitude)
+            distanceFromLast = currLocation.distance(from: prevLocation)
+        } else {
+            distanceFromLast = 0
+        }
+
         print("📍 [圈地] 记录位置 #\(pathCoordinates.count): (\(String(format: "%.6f", currentLocation.latitude)), \(String(format: "%.6f", currentLocation.longitude)))")
+
+        // 记录新点日志
+        TerritoryLogger.shared.log("记录第 \(pathCoordinates.count) 个点，距上点 \(String(format: "%.1f", distanceFromLast))m", type: .info)
+
+        // 闭环检测
+        checkPathClosure()
     }
 
     /// 获取追踪时长（格式化字符串）

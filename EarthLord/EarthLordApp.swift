@@ -14,6 +14,9 @@ struct EarthLordApp: App {
     /// 认证管理器（全局状态）
     @StateObject private var authManager = AuthManager.shared
 
+    /// 定位管理器（全局状态）
+    @StateObject private var locationManager = LocationManager.shared
+
     /// 启动画面是否已完成
     @State private var splashFinished = false
 
@@ -46,6 +49,7 @@ struct EarthLordApp: App {
                     MainTabView()
                         .transition(.opacity)
                         .environmentObject(authManager)
+                        .environmentObject(locationManager)
                 } else {
                     // 未登录：显示认证页面
                     AuthView()

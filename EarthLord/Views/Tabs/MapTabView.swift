@@ -31,6 +31,12 @@ struct MapTabView: View {
     /// 用于刷新追踪信息的触发器
     @State private var trackingInfoRefresh = false
 
+    /// 是否显示速度警告
+    @State private var showSpeedWarning = false
+
+    /// 速度警告自动隐藏定时器
+    @State private var speedWarningTimer: Timer?
+
     // MARK: - 视图
 
     var body: some View {
@@ -41,7 +47,8 @@ struct MapTabView: View {
                 hasLocatedUser: $hasLocatedUser,
                 pathCoordinates: $locationManager.pathCoordinates,
                 pathUpdateVersion: $locationManager.pathUpdateVersion,
-                isTracking: $locationManager.isTracking
+                isTracking: $locationManager.isTracking,
+                isPathClosed: $locationManager.isPathClosed
             )
             .ignoresSafeArea()
 
@@ -82,6 +89,16 @@ struct MapTabView: View {
             if locationManager.isDenied {
                 permissionDeniedOverlay
             }
+
+            // 速度警告弹窗
+            if showSpeedWarning, let warning = locationManager.speedWarning {
+                speedWarningOverlay(message: warning)
+            }
+
+            // 闭环成功提示
+            if locationManager.isPathClosed && locationManager.isTracking {
+                closureSuccessOverlay
+            }
         }
         .onAppear {
             // 页面出现时检查并请求定位权限
@@ -104,6 +121,22 @@ struct MapTabView: View {
                 // 停止追踪时，停止定时器
                 trackingInfoTimer?.invalidate()
                 trackingInfoTimer = nil
+            }
+        }
+        .onChange(of: locationManager.speedWarning) { _, newWarning in
+            if newWarning != nil {
+                // 显示警告
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showSpeedWarning = true
+                }
+
+                // 启动自动隐藏定时器（3秒后隐藏）
+                speedWarningTimer?.invalidate()
+                speedWarningTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        showSpeedWarning = false
+                    }
+                }
             }
         }
     }
@@ -342,6 +375,100 @@ struct MapTabView: View {
                     .foregroundColor(locationManager.isAuthorized ? ApocalypseTheme.primary : ApocalypseTheme.textSecondary)
             }
         }
+    }
+
+    /// 速度警告覆盖层
+    private func speedWarningOverlay(message: String) -> some View {
+        VStack {
+            Spacer()
+                .frame(height: 160)
+
+            HStack(spacing: 12) {
+                // 警告图标
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(ApocalypseTheme.warning)
+
+                // 警告信息
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("速度警告")
+                        .font(.headline)
+                        .foregroundColor(ApocalypseTheme.textPrimary)
+
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+
+                Spacer()
+
+                // 关闭按钮
+                Button(action: {
+                    withAnimation {
+                        showSpeedWarning = false
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(ApocalypseTheme.cardBackground.opacity(0.98))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(ApocalypseTheme.warning.opacity(0.5), lineWidth: 1)
+                    )
+            )
+            .shadow(color: .black.opacity(0.4), radius: 10, x: 0, y: 5)
+            .padding(.horizontal, 16)
+
+            Spacer()
+        }
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    /// 闭环成功提示覆盖层
+    private var closureSuccessOverlay: some View {
+        VStack {
+            Spacer()
+
+            HStack(spacing: 12) {
+                // 成功图标
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 28))
+                    .foregroundColor(Color(red: 0.2, green: 0.8, blue: 0.4))
+
+                // 成功信息
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("领地闭环成功！")
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(ApocalypseTheme.textPrimary)
+
+                    Text("点击「结束圈地」保存领地")
+                        .font(.subheadline)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+
+                Spacer()
+            }
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(ApocalypseTheme.cardBackground.opacity(0.98))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color(red: 0.2, green: 0.8, blue: 0.4).opacity(0.5), lineWidth: 1)
+                    )
+            )
+            .shadow(color: .black.opacity(0.4), radius: 10, x: 0, y: 5)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 200)
+        }
+        .transition(.scale.combined(with: .opacity))
     }
 
     /// 权限被拒绝的覆盖层
