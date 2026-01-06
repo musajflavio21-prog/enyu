@@ -61,6 +61,25 @@ class LocationManager: NSObject, ObservableObject {
     /// 最少路径点数 - 至少需要这么多点才能判断闭环
     private let minimumPathPoints: Int = 10
 
+    // MARK: - 验证常量
+
+    /// 最小行走距离（米）
+    private let minimumTotalDistance: Double = 50.0
+
+    /// 最小领地面积（平方米）
+    private let minimumEnclosedArea: Double = 100.0
+
+    // MARK: - 验证状态属性
+
+    /// 领地验证是否通过
+    @Published var territoryValidationPassed: Bool = false
+
+    /// 领地验证错误信息
+    @Published var territoryValidationError: String? = nil
+
+    /// 计算出的领地面积（平方米）
+    @Published var calculatedArea: Double = 0
+
     // MARK: - 速度检测属性
 
     /// 速度警告信息
@@ -78,11 +97,20 @@ class LocationManager: NSObject, ObservableObject {
     /// 上次位置坐标
     private var lastRecordedLocation: CLLocationCoordinate2D?
 
-    /// 速度警告阈值（km/h）
-    private let speedWarningThreshold: Double = 15.0
+    /// 速度警告阈值（km/h）- 提高阈值避免 GPS 漂移误报
+    private let speedWarningThreshold: Double = 25.0
 
     /// 速度停止阈值（km/h）- 超过此速度自动停止追踪
-    private let speedStopThreshold: Double = 30.0
+    private let speedStopThreshold: Double = 50.0
+
+    /// 速度检测预热点数 - 前几个点不检测速度（GPS 需要稳定）
+    private let speedCheckWarmupPoints: Int = 3
+
+    /// 连续超速计数 - 需要连续多次超速才触发
+    private var consecutiveOverSpeedCount: Int = 0
+
+    /// 触发警告需要的连续超速次数
+    private let requiredConsecutiveOverSpeed: Int = 2
 
     // MARK: - 私有属性
 
@@ -215,6 +243,10 @@ class LocationManager: NSObject, ObservableObject {
         currentSpeed = 0
         lastLocationTimestamp = nil
         lastRecordedLocation = nil
+        consecutiveOverSpeedCount = 0
+        territoryValidationPassed = false
+        territoryValidationError = nil
+        calculatedArea = 0
         pathUpdateVersion += 1
 
         // 确保定位服务正在运行
@@ -267,6 +299,10 @@ class LocationManager: NSObject, ObservableObject {
         currentSpeed = 0
         lastLocationTimestamp = nil
         lastRecordedLocation = nil
+        consecutiveOverSpeedCount = 0
+        territoryValidationPassed = false
+        territoryValidationError = nil
+        calculatedArea = 0
         pathUpdateVersion += 1
     }
 
@@ -307,6 +343,11 @@ class LocationManager: NSObject, ObservableObject {
 
             // 记录闭环成功日志
             TerritoryLogger.shared.log("闭环成功！距起点 \(String(format: "%.1f", distanceToStart))m", type: .success)
+
+            // 闭环后自动触发领地验证
+            let validationResult = validateTerritory()
+            territoryValidationPassed = validationResult.isValid
+            territoryValidationError = validationResult.errorMessage
         }
     }
 
@@ -324,6 +365,15 @@ class LocationManager: NSObject, ObservableObject {
             lastLocationTimestamp = now
             lastRecordedLocation = newLocation
             currentSpeed = 0
+            return true
+        }
+
+        // 预热期：前几个点不检测速度（GPS 需要时间稳定）
+        if pathCoordinates.count < speedCheckWarmupPoints {
+            lastLocationTimestamp = now
+            lastRecordedLocation = newLocation
+            print("🏃 [速度] 预热期，跳过速度检测（点数: \(pathCoordinates.count)/\(speedCheckWarmupPoints)）")
+            TerritoryLogger.shared.log("GPS 预热中... (\(pathCoordinates.count)/\(speedCheckWarmupPoints))", type: .info)
             return true
         }
 
@@ -347,32 +397,40 @@ class LocationManager: NSObject, ObservableObject {
 
         print("🏃 [速度] 当前速度: \(String(format: "%.1f", speedKmh)) km/h")
 
-        // 超过停止阈值（30 km/h）- 自动停止追踪
+        // 超过停止阈值（50 km/h）- 需要连续超速才停止
         if speedKmh > speedStopThreshold {
-            speedWarning = "速度过快（\(String(format: "%.0f", speedKmh)) km/h），已自动暂停追踪"
-            isOverSpeed = true
-            print("🚨 [速度] 超速停止！速度 \(String(format: "%.1f", speedKmh)) km/h > \(speedStopThreshold) km/h")
+            consecutiveOverSpeedCount += 1
+            print("🚨 [速度] 超速检测 \(consecutiveOverSpeedCount)/\(requiredConsecutiveOverSpeed)")
 
-            // 记录超速停止日志
-            TerritoryLogger.shared.log("超速 \(String(format: "%.1f", speedKmh)) km/h，已停止追踪", type: .error)
-
-            stopPathTracking()
-            return false
+            if consecutiveOverSpeedCount >= requiredConsecutiveOverSpeed {
+                speedWarning = "速度过快（\(String(format: "%.0f", speedKmh)) km/h），已自动暂停追踪"
+                isOverSpeed = true
+                print("🚨 [速度] 连续超速，停止追踪！")
+                TerritoryLogger.shared.log("超速 \(String(format: "%.1f", speedKmh)) km/h，已停止追踪", type: .error)
+                stopPathTracking()
+                return false
+            } else {
+                // 单次超速，可能是 GPS 漂移，只记录不停止
+                TerritoryLogger.shared.log("疑似 GPS 漂移 \(String(format: "%.1f", speedKmh)) km/h，继续监测", type: .warning)
+                return true
+            }
         }
 
-        // 超过警告阈值（15 km/h）
+        // 超过警告阈值（25 km/h）
         if speedKmh > speedWarningThreshold {
-            speedWarning = "移动速度较快（\(String(format: "%.0f", speedKmh)) km/h），请步行圈地"
-            isOverSpeed = true
-            print("⚠️ [速度] 速度警告！速度 \(String(format: "%.1f", speedKmh)) km/h > \(speedWarningThreshold) km/h")
+            consecutiveOverSpeedCount += 1
 
-            // 记录速度警告日志
-            TerritoryLogger.shared.log("速度较快 \(String(format: "%.1f", speedKmh)) km/h", type: .warning)
-
+            if consecutiveOverSpeedCount >= requiredConsecutiveOverSpeed {
+                speedWarning = "移动速度较快（\(String(format: "%.0f", speedKmh)) km/h），请步行圈地"
+                isOverSpeed = true
+                print("⚠️ [速度] 连续速度警告！")
+                TerritoryLogger.shared.log("速度较快 \(String(format: "%.1f", speedKmh)) km/h", type: .warning)
+            }
             return true  // 警告但继续记录
         }
 
-        // 速度正常
+        // 速度正常，重置连续超速计数
+        consecutiveOverSpeedCount = 0
         if isOverSpeed {
             speedWarning = nil
             isOverSpeed = false
@@ -452,6 +510,185 @@ class LocationManager: NSObject, ObservableObject {
         } else {
             return String(format: "%.2f 公里", trackingDistance / 1000)
         }
+    }
+
+    // MARK: - 距离与面积计算
+
+    /// 计算路径总距离
+    /// - Returns: 总距离（米）
+    private func calculateTotalPathDistance() -> Double {
+        guard pathCoordinates.count >= 2 else { return 0 }
+
+        var totalDistance: Double = 0
+
+        for i in 0..<(pathCoordinates.count - 1) {
+            let current = pathCoordinates[i]
+            let next = pathCoordinates[i + 1]
+
+            let currentLocation = CLLocation(latitude: current.latitude, longitude: current.longitude)
+            let nextLocation = CLLocation(latitude: next.latitude, longitude: next.longitude)
+
+            totalDistance += nextLocation.distance(from: currentLocation)
+        }
+
+        return totalDistance
+    }
+
+    /// 使用鞋带公式计算多边形面积（考虑地球曲率）
+    /// - Returns: 面积（平方米）
+    private func calculatePolygonArea() -> Double {
+        guard pathCoordinates.count >= 3 else { return 0 }
+
+        let earthRadius: Double = 6371000  // 地球半径（米）
+        var area: Double = 0
+
+        for i in 0..<pathCoordinates.count {
+            let current = pathCoordinates[i]
+            let next = pathCoordinates[(i + 1) % pathCoordinates.count]  // 循环取点
+
+            // 经纬度转弧度
+            let lat1 = current.latitude * .pi / 180
+            let lon1 = current.longitude * .pi / 180
+            let lat2 = next.latitude * .pi / 180
+            let lon2 = next.longitude * .pi / 180
+
+            // 鞋带公式（球面修正）
+            area += (lon2 - lon1) * (2 + sin(lat1) + sin(lat2))
+        }
+
+        area = abs(area * earthRadius * earthRadius / 2.0)
+        return area
+    }
+
+    // MARK: - 自相交检测
+
+    /// 判断两线段是否相交（CCW 算法）
+    /// - Parameters:
+    ///   - p1: 线段1起点
+    ///   - p2: 线段1终点
+    ///   - p3: 线段2起点
+    ///   - p4: 线段2终点
+    /// - Returns: true 表示相交
+    private func segmentsIntersect(p1: CLLocationCoordinate2D, p2: CLLocationCoordinate2D,
+                                   p3: CLLocationCoordinate2D, p4: CLLocationCoordinate2D) -> Bool {
+        /// CCW 辅助函数：判断三点是否逆时针排列
+        /// 坐标映射：longitude = X轴，latitude = Y轴
+        func ccw(_ A: CLLocationCoordinate2D, _ B: CLLocationCoordinate2D, _ C: CLLocationCoordinate2D) -> Bool {
+            // 叉积 = (Cy - Ay) × (Bx - Ax) - (By - Ay) × (Cx - Ax)
+            let crossProduct = (C.latitude - A.latitude) * (B.longitude - A.longitude) -
+                               (B.latitude - A.latitude) * (C.longitude - A.longitude)
+            return crossProduct > 0
+        }
+
+        // 判断逻辑：两线段相交当且仅当
+        // ccw(p1, p3, p4) ≠ ccw(p2, p3, p4) 且 ccw(p1, p2, p3) ≠ ccw(p1, p2, p4)
+        return ccw(p1, p3, p4) != ccw(p2, p3, p4) && ccw(p1, p2, p3) != ccw(p1, p2, p4)
+    }
+
+    /// 检测路径是否存在自相交
+    /// - Returns: true 表示存在自相交
+    func hasPathSelfIntersection() -> Bool {
+        // ✅ 防御性检查：至少需要4个点才可能自交
+        guard pathCoordinates.count >= 4 else { return false }
+
+        // ✅ 创建路径快照的深拷贝，避免并发修改问题
+        let pathSnapshot = Array(pathCoordinates)
+
+        // ✅ 再次检查快照是否有效
+        guard pathSnapshot.count >= 4 else { return false }
+
+        let segmentCount = pathSnapshot.count - 1
+
+        // ✅ 防御性检查：确保有足够的线段
+        guard segmentCount >= 2 else { return false }
+
+        // ✅ 闭环时需要跳过的首尾线段数量（防止正常圈地被误判）
+        let skipHeadCount = 2
+        let skipTailCount = 2
+
+        for i in 0..<segmentCount {
+            // ✅ 循环内索引检查
+            guard i < pathSnapshot.count - 1 else { break }
+
+            let p1 = pathSnapshot[i]
+            let p2 = pathSnapshot[i + 1]
+
+            let startJ = i + 2
+            guard startJ < segmentCount else { continue }
+
+            for j in startJ..<segmentCount {
+                // ✅ 循环内索引检查
+                guard j < pathSnapshot.count - 1 else { break }
+
+                // ✅ 跳过首尾附近线段的比较（防止正常闭环被误判为自交）
+                let isHeadSegment = i < skipHeadCount
+                let isTailSegment = j >= segmentCount - skipTailCount
+                if isHeadSegment && isTailSegment {
+                    continue
+                }
+
+                let p3 = pathSnapshot[j]
+                let p4 = pathSnapshot[j + 1]
+
+                if segmentsIntersect(p1: p1, p2: p2, p3: p3, p4: p4) {
+                    TerritoryLogger.shared.log("自交检测: 线段\(i)-\(i+1) 与 线段\(j)-\(j+1) 相交", type: .error)
+                    return true
+                }
+            }
+        }
+
+        TerritoryLogger.shared.log("自交检测: 无交叉 ✓", type: .info)
+        return false
+    }
+
+    // MARK: - 综合验证
+
+    /// 综合验证领地是否有效
+    /// - Returns: (isValid: 是否有效, errorMessage: 错误信息)
+    func validateTerritory() -> (isValid: Bool, errorMessage: String?) {
+        TerritoryLogger.shared.log("开始领地验证", type: .info)
+
+        // 1. 点数检查
+        let pointCount = pathCoordinates.count
+        if pointCount < minimumPathPoints {
+            let error = "点数不足: \(pointCount)个 (需≥\(minimumPathPoints)个)"
+            TerritoryLogger.shared.log("点数检查: \(pointCount)个 ✗", type: .error)
+            TerritoryLogger.shared.log("领地验证失败: \(error)", type: .error)
+            return (false, error)
+        }
+        TerritoryLogger.shared.log("点数检查: \(pointCount)个 ✓", type: .info)
+
+        // 2. 距离检查
+        let totalDistance = calculateTotalPathDistance()
+        if totalDistance < minimumTotalDistance {
+            let error = "距离不足: \(String(format: "%.0f", totalDistance))m (需≥\(Int(minimumTotalDistance))m)"
+            TerritoryLogger.shared.log("距离检查: \(String(format: "%.0f", totalDistance))m ✗", type: .error)
+            TerritoryLogger.shared.log("领地验证失败: \(error)", type: .error)
+            return (false, error)
+        }
+        TerritoryLogger.shared.log("距离检查: \(String(format: "%.0f", totalDistance))m ✓", type: .info)
+
+        // 3. 自交检测
+        if hasPathSelfIntersection() {
+            let error = "轨迹自相交，请勿画8字形"
+            TerritoryLogger.shared.log("领地验证失败: \(error)", type: .error)
+            return (false, error)
+        }
+
+        // 4. 面积检查
+        let area = calculatePolygonArea()
+        calculatedArea = area
+        if area < minimumEnclosedArea {
+            let error = "面积不足: \(String(format: "%.0f", area))m² (需≥\(Int(minimumEnclosedArea))m²)"
+            TerritoryLogger.shared.log("面积检查: \(String(format: "%.0f", area))m² ✗", type: .error)
+            TerritoryLogger.shared.log("领地验证失败: \(error)", type: .error)
+            return (false, error)
+        }
+        TerritoryLogger.shared.log("面积检查: \(String(format: "%.0f", area))m² ✓", type: .info)
+
+        // 所有验证通过
+        TerritoryLogger.shared.log("领地验证通过！面积: \(String(format: "%.0f", area))m²", type: .success)
+        return (true, nil)
     }
 
     // MARK: - 私有方法

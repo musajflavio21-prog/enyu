@@ -37,6 +37,9 @@ struct MapTabView: View {
     /// 速度警告自动隐藏定时器
     @State private var speedWarningTimer: Timer?
 
+    /// 是否显示验证结果横幅
+    @State private var showValidationBanner = false
+
     // MARK: - 视图
 
     var body: some View {
@@ -95,9 +98,9 @@ struct MapTabView: View {
                 speedWarningOverlay(message: warning)
             }
 
-            // 闭环成功提示
-            if locationManager.isPathClosed && locationManager.isTracking {
-                closureSuccessOverlay
+            // 验证结果横幅（根据验证结果显示成功或失败）
+            if showValidationBanner {
+                validationResultBanner
             }
         }
         .onAppear {
@@ -135,6 +138,22 @@ struct MapTabView: View {
                 speedWarningTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
                     withAnimation(.easeInOut(duration: 0.3)) {
                         showSpeedWarning = false
+                    }
+                }
+            }
+        }
+        .onChange(of: locationManager.isPathClosed) { _, isClosed in
+            if isClosed {
+                // 闭环后显示验证结果横幅
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                        showValidationBanner = true
+                    }
+                    // 3秒后自动隐藏
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            showValidationBanner = false
+                        }
                     }
                 }
             }
@@ -430,27 +449,36 @@ struct MapTabView: View {
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 
-    /// 闭环成功提示覆盖层
-    private var closureSuccessOverlay: some View {
-        VStack {
+    /// 验证结果横幅（根据验证结果显示成功或失败）
+    private var validationResultBanner: some View {
+        let isSuccess = locationManager.territoryValidationPassed
+        let areaString = String(format: "%.1f", locationManager.calculatedArea)
+
+        return VStack {
             Spacer()
 
             HStack(spacing: 12) {
-                // 成功图标
-                Image(systemName: "checkmark.circle.fill")
+                // 图标
+                Image(systemName: isSuccess ? "checkmark.circle.fill" : "xmark.circle.fill")
                     .font(.system(size: 28))
-                    .foregroundColor(Color(red: 0.2, green: 0.8, blue: 0.4))
+                    .foregroundColor(isSuccess ? Color(red: 0.2, green: 0.8, blue: 0.4) : ApocalypseTheme.danger)
 
-                // 成功信息
+                // 信息
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("领地闭环成功！")
+                    Text(isSuccess ? "领地验证成功！" : "领地验证失败")
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(ApocalypseTheme.textPrimary)
 
-                    Text("点击「结束圈地」保存领地")
-                        .font(.subheadline)
-                        .foregroundColor(ApocalypseTheme.textSecondary)
+                    if isSuccess {
+                        Text("面积: \(areaString) m² - 点击「结束圈地」保存")
+                            .font(.subheadline)
+                            .foregroundColor(ApocalypseTheme.textSecondary)
+                    } else if let error = locationManager.territoryValidationError {
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(ApocalypseTheme.danger.opacity(0.8))
+                    }
                 }
 
                 Spacer()
@@ -461,7 +489,10 @@ struct MapTabView: View {
                     .fill(ApocalypseTheme.cardBackground.opacity(0.98))
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color(red: 0.2, green: 0.8, blue: 0.4).opacity(0.5), lineWidth: 1)
+                            .stroke(
+                                (isSuccess ? Color(red: 0.2, green: 0.8, blue: 0.4) : ApocalypseTheme.danger).opacity(0.5),
+                                lineWidth: 1
+                            )
                     )
             )
             .shadow(color: .black.opacity(0.4), radius: 10, x: 0, y: 5)
