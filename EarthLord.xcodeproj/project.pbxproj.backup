@@ -1,0 +1,474 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4B7D97052EFEC11800A16155 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 4B7D97042EFEC11800A16155 /* Supabase */; };
+		4B7D979D2F02BE2E00A16155 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D97982F02BE2D00A16155 /* AuthView.swift */; };
+		4B7D979E2F02BE2E00A16155 /* MapTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D97922F02BE2D00A16155 /* MapTabView.swift */; };
+		4B7D979F2F02BE2E00A16155 /* TerritoryTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D97962F02BE2D00A16155 /* TerritoryTabView.swift */; };
+		4B7D97A02F02BE2E00A16155 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D979A2F02BE2D00A16155 /* RootView.swift */; };
+		4B7D97A12F02BE2E00A16155 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D97992F02BE2D00A16155 /* MainTabView.swift */; };
+		4B7D97A22F02BE2E00A16155 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D979B2F02BE2D00A16155 /* SplashView.swift */; };
+		4B7D97A32F02BE2E00A16155 /* MoreTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D97932F02BE2D00A16155 /* MoreTabView.swift */; };
+		4B7D97A42F02BE2E00A16155 /* SupabaseTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D97952F02BE2D00A16155 /* SupabaseTestView.swift */; };
+		4B7D97A52F02BE2E00A16155 /* ProfileTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D97942F02BE2D00A16155 /* ProfileTabView.swift */; };
+		4B7D981D2F02C1A200A16155 /* PlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D981B2F02C1A200A16155 /* PlaceholderView.swift */; };
+		4B7D98202F02C1EC00A16155 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D981E2F02C1EC00A16155 /* AuthManager.swift */; };
+		4B7D98232F02C28C00A16155 /* ApocalypseTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7D98212F02C28C00A16155 /* ApocalypseTheme.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		4B7D95FA2EFAD9DE00A16155 /* EarthLord.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EarthLord.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B7D97922F02BE2D00A16155 /* MapTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapTabView.swift; sourceTree = "<group>"; };
+		4B7D97932F02BE2D00A16155 /* MoreTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreTabView.swift; sourceTree = "<group>"; };
+		4B7D97942F02BE2D00A16155 /* ProfileTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileTabView.swift; sourceTree = "<group>"; };
+		4B7D97952F02BE2D00A16155 /* SupabaseTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseTestView.swift; sourceTree = "<group>"; };
+		4B7D97962F02BE2D00A16155 /* TerritoryTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerritoryTabView.swift; sourceTree = "<group>"; };
+		4B7D97982F02BE2D00A16155 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthView.swift; sourceTree = "<group>"; };
+		4B7D97992F02BE2D00A16155 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		4B7D979A2F02BE2D00A16155 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		4B7D979B2F02BE2D00A16155 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
+		4B7D981B2F02C1A200A16155 /* PlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceholderView.swift; sourceTree = "<group>"; };
+		4B7D981E2F02C1EC00A16155 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
+		4B7D98212F02C28C00A16155 /* ApocalypseTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApocalypseTheme.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4B7D97022EFEC11100A16155 /* Exceptions for "EarthLord" folder in "EarthLord" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 4B7D95F92EFAD9DE00A16155 /* EarthLord */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		4B7D95FC2EFAD9DE00A16155 /* EarthLord */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4B7D97022EFEC11100A16155 /* Exceptions for "EarthLord" folder in "EarthLord" target */,
+			);
+			path = EarthLord;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4B7D95F72EFAD9DE00A16155 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B7D97052EFEC11800A16155 /* Supabase in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		4B7D95F12EFAD9DE00A16155 = {
+			isa = PBXGroup;
+			children = (
+				4B7D981C2F02C1A200A16155 /* Components */,
+				4B7D979C2F02BE2D00A16155 /* Views */,
+				4B7D95FC2EFAD9DE00A16155 /* EarthLord */,
+				4B7D97032EFEC11800A16155 /* Frameworks */,
+				4B7D95FB2EFAD9DE00A16155 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4B7D95FB2EFAD9DE00A16155 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4B7D95FA2EFAD9DE00A16155 /* EarthLord.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		4B7D97032EFEC11800A16155 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		4B7D97972F02BE2D00A16155 /* Tabs */ = {
+			isa = PBXGroup;
+			children = (
+				4B7D97922F02BE2D00A16155 /* MapTabView.swift */,
+				4B7D97932F02BE2D00A16155 /* MoreTabView.swift */,
+				4B7D97942F02BE2D00A16155 /* ProfileTabView.swift */,
+				4B7D97952F02BE2D00A16155 /* SupabaseTestView.swift */,
+				4B7D97962F02BE2D00A16155 /* TerritoryTabView.swift */,
+			);
+			path = Tabs;
+			sourceTree = "<group>";
+		};
+		4B7D979C2F02BE2D00A16155 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				4B7D97972F02BE2D00A16155 /* Tabs */,
+				4B7D97982F02BE2D00A16155 /* AuthView.swift */,
+				4B7D97992F02BE2D00A16155 /* MainTabView.swift */,
+				4B7D979A2F02BE2D00A16155 /* RootView.swift */,
+				4B7D979B2F02BE2D00A16155 /* SplashView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		4B7D981C2F02C1A200A16155 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				4B7D981F2F02C1EC00A16155 /* Managers */,
+				4B7D981B2F02C1A200A16155 /* PlaceholderView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		4B7D981F2F02C1EC00A16155 /* Managers */ = {
+			isa = PBXGroup;
+			children = (
+				4B7D98222F02C28C00A16155 /* Theme */,
+				4B7D981E2F02C1EC00A16155 /* AuthManager.swift */,
+			);
+			path = Managers;
+			sourceTree = "<group>";
+		};
+		4B7D98222F02C28C00A16155 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				4B7D98212F02C28C00A16155 /* ApocalypseTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		4B7D95F92EFAD9DE00A16155 /* EarthLord */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4B7D96052EFAD9E000A16155 /* Build configuration list for PBXNativeTarget "EarthLord" */;
+			buildPhases = (
+				4B7D95F62EFAD9DE00A16155 /* Sources */,
+				4B7D95F72EFAD9DE00A16155 /* Frameworks */,
+				4B7D95F82EFAD9DE00A16155 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4B7D95FC2EFAD9DE00A16155 /* EarthLord */,
+			);
+			name = EarthLord;
+			packageProductDependencies = (
+				4B7D97042EFEC11800A16155 /* Supabase */,
+			);
+			productName = EarthLord;
+			productReference = 4B7D95FA2EFAD9DE00A16155 /* EarthLord.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		4B7D95F22EFAD9DE00A16155 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2620;
+				LastUpgradeCheck = 2620;
+				TargetAttributes = {
+					4B7D95F92EFAD9DE00A16155 = {
+						CreatedOnToolsVersion = 26.2;
+					};
+				};
+			};
+			buildConfigurationList = 4B7D95F52EFAD9DE00A16155 /* Build configuration list for PBXProject "EarthLord" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 4B7D95F12EFAD9DE00A16155;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				4B7D97002EFEBF9E00A16155 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4B7D95FB2EFAD9DE00A16155 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				4B7D95F92EFAD9DE00A16155 /* EarthLord */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		4B7D95F82EFAD9DE00A16155 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4B7D95F62EFAD9DE00A16155 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B7D979D2F02BE2E00A16155 /* AuthView.swift in Sources */,
+				4B7D98232F02C28C00A16155 /* ApocalypseTheme.swift in Sources */,
+				4B7D981D2F02C1A200A16155 /* PlaceholderView.swift in Sources */,
+				4B7D979E2F02BE2E00A16155 /* MapTabView.swift in Sources */,
+				4B7D979F2F02BE2E00A16155 /* TerritoryTabView.swift in Sources */,
+				4B7D97A02F02BE2E00A16155 /* RootView.swift in Sources */,
+				4B7D97A12F02BE2E00A16155 /* MainTabView.swift in Sources */,
+				4B7D97A22F02BE2E00A16155 /* SplashView.swift in Sources */,
+				4B7D97A32F02BE2E00A16155 /* MoreTabView.swift in Sources */,
+				4B7D97A42F02BE2E00A16155 /* SupabaseTestView.swift in Sources */,
+				4B7D97A52F02BE2E00A16155 /* ProfileTabView.swift in Sources */,
+				4B7D98202F02C1EC00A16155 /* AuthManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		4B7D96032EFAD9E000A16155 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = TWGB25XGJV;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		4B7D96042EFAD9E000A16155 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = TWGB25XGJV;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		4B7D96062EFAD9E000A16155 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TWGB25XGJV;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EarthLord/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shangenyu.EarthLord;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4B7D96072EFAD9E000A16155 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TWGB25XGJV;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EarthLord/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.shangenyu.EarthLord;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4B7D95F52EFAD9DE00A16155 /* Build configuration list for PBXProject "EarthLord" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B7D96032EFAD9E000A16155 /* Debug */,
+				4B7D96042EFAD9E000A16155 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4B7D96052EFAD9E000A16155 /* Build configuration list for PBXNativeTarget "EarthLord" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4B7D96062EFAD9E000A16155 /* Debug */,
+				4B7D96072EFAD9E000A16155 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		4B7D97002EFEBF9E00A16155 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		4B7D97042EFEC11800A16155 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 4B7D97002EFEBF9E00A16155 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 4B7D95F22EFAD9DE00A16155 /* Project object */;
+}
