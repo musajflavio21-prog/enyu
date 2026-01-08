@@ -285,8 +285,21 @@ class LocationManager: NSObject, ObservableObject {
         trackingTimer?.invalidate()
         trackingTimer = nil
 
-        // 更新状态
+        // 更新状态（重置所有追踪相关的状态）
         isTracking = false
+        pathCoordinates = []
+        trackingDistance = 0
+        trackingStartTime = nil
+        isPathClosed = false
+        speedWarning = nil
+        isOverSpeed = false
+        currentSpeed = 0
+        lastLocationTimestamp = nil
+        lastRecordedLocation = nil
+        consecutiveOverSpeedCount = 0
+        territoryValidationPassed = false
+        territoryValidationError = nil
+        calculatedArea = 0
         pathUpdateVersion += 1
     }
 
@@ -537,29 +550,38 @@ class LocationManager: NSObject, ObservableObject {
         return totalDistance
     }
 
-    /// 使用鞋带公式计算多边形面积（考虑地球曲率）
+    /// 使用鞋带公式计算多边形面积（平面投影方法）
     /// - Returns: 面积（平方米）
     private func calculatePolygonArea() -> Double {
         guard pathCoordinates.count >= 3 else { return 0 }
 
-        let earthRadius: Double = 6371000  // 地球半径（米）
-        var area: Double = 0
+        // 使用第一个点作为参考点，将所有点转换为相对米坐标
+        let referencePoint = pathCoordinates[0]
+        let referenceLat = referencePoint.latitude * .pi / 180
 
-        for i in 0..<pathCoordinates.count {
-            let current = pathCoordinates[i]
-            let next = pathCoordinates[(i + 1) % pathCoordinates.count]  // 循环取点
+        // 计算1度经纬度对应的米数（在参考点处）
+        let metersPerDegreeLat: Double = 111320  // 纬度1度约等于111.32km
+        let metersPerDegreeLon: Double = 111320 * cos(referenceLat)  // 经度1度随纬度变化
 
-            // 经纬度转弧度
-            let lat1 = current.latitude * .pi / 180
-            let lon1 = current.longitude * .pi / 180
-            let lat2 = next.latitude * .pi / 180
-            let lon2 = next.longitude * .pi / 180
-
-            // 鞋带公式（球面修正）
-            area += (lon2 - lon1) * (2 + sin(lat1) + sin(lat2))
+        // 将所有坐标点转换为以参考点为原点的米坐标
+        var points: [(x: Double, y: Double)] = []
+        for coord in pathCoordinates {
+            let x = (coord.longitude - referencePoint.longitude) * metersPerDegreeLon
+            let y = (coord.latitude - referencePoint.latitude) * metersPerDegreeLat
+            points.append((x: x, y: y))
         }
 
-        area = abs(area * earthRadius * earthRadius / 2.0)
+        // 使用标准鞋带公式计算面积
+        var area: Double = 0
+        let n = points.count
+
+        for i in 0..<n {
+            let j = (i + 1) % n  // 下一个点（循环）
+            area += points[i].x * points[j].y
+            area -= points[j].x * points[i].y
+        }
+
+        area = abs(area / 2.0)
         return area
     }
 
