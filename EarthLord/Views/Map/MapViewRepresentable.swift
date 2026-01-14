@@ -39,6 +39,9 @@ struct MapViewRepresentable: UIViewRepresentable {
     /// 当前用户 ID
     var currentUserId: String?
 
+    /// 附近 POI 列表（Day22 搜刮系统）
+    @Binding var nearbyPOIs: [RealPOI]
+
     // MARK: - Overlay 标识符
 
     /// 轨迹线 Overlay 的标识符
@@ -111,6 +114,12 @@ struct MapViewRepresentable: UIViewRepresentable {
             currentUserId: currentUserId,
             on: mapView
         )
+
+        // 更新 POI 标记（Day22 搜刮系统）
+        context.coordinator.updatePOIAnnotations(
+            pois: nearbyPOIs,
+            on: mapView
+        )
     }
 
     /// 创建协调器
@@ -166,6 +175,12 @@ struct MapViewRepresentable: UIViewRepresentable {
 
         /// 上次加载的领地数量
         private var lastTerritoryCount = 0
+
+        /// 上次加载的 POI 数量（Day22）
+        private var lastPOICount = 0
+
+        /// 当前的 POI Annotations（Day22）
+        private var currentPOIAnnotations: [POIAnnotation] = []
 
         init(_ parent: MapViewRepresentable) {
             self.parent = parent
@@ -291,6 +306,38 @@ struct MapViewRepresentable: UIViewRepresentable {
             print("✅ [领地] 领地绘制完成")
         }
 
+        // MARK: - POI 标记管理（Day22）
+
+        /// 更新 POI 标记
+        /// - Parameters:
+        ///   - pois: POI 列表
+        ///   - mapView: 地图视图
+        func updatePOIAnnotations(pois: [RealPOI], on mapView: MKMapView) {
+            // 检查是否需要更新
+            guard pois.count != lastPOICount else {
+                return
+            }
+
+            lastPOICount = pois.count
+
+            // 移除旧的 POI Annotations
+            mapView.removeAnnotations(currentPOIAnnotations)
+            currentPOIAnnotations.removeAll()
+
+            print("🗺️ [POI] 开始绘制 \(pois.count) 个POI标记")
+
+            // 添加新的 POI Annotations
+            for poi in pois {
+                let annotation = POIAnnotation(poi: poi)
+                mapView.addAnnotation(annotation)
+                currentPOIAnnotations.append(annotation)
+
+                print("🗺️ [POI] 添加标记: \(poi.name) (\(poi.type.displayName))")
+            }
+
+            print("✅ [POI] POI标记绘制完成")
+        }
+
         // MARK: - MKMapViewDelegate
 
         /// ⭐ 关键方法：渲染 Overlay（轨迹线和多边形）
@@ -342,6 +389,83 @@ struct MapViewRepresentable: UIViewRepresentable {
             }
 
             return MKOverlayRenderer(overlay: overlay)
+        }
+
+        /// ⭐ 关键方法：渲染 Annotation（POI 标记）
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            // 用户位置蓝点使用默认渲染
+            if annotation is MKUserLocation {
+                return nil
+            }
+
+            // POI 标记
+            guard let poiAnnotation = annotation as? POIAnnotation else {
+                return nil
+            }
+
+            let identifier = "POIAnnotation"
+            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+
+            if annotationView == nil {
+                annotationView = MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                annotationView?.canShowCallout = true
+            } else {
+                annotationView?.annotation = annotation
+            }
+
+            // 根据 POI 类型和搜刮状态设置图标
+            let poi = poiAnnotation.poi
+            let iconName = poi.type.iconName
+            let baseColor = typeColor(for: poi.type)
+
+            // 如果已搜刮，显示灰色；否则显示彩色
+            let color = poi.hasBeenScavenged ? UIColor.gray : baseColor
+
+            // 创建自定义图标（增大尺寸，更明显）
+            let size = CGSize(width: 44, height: 44)
+            let renderer = UIGraphicsImageRenderer(size: size)
+            let image = renderer.image { context in
+                let ctx = context.cgContext
+
+                // 绘制外圈白色边框（增强可见性）
+                ctx.setFillColor(UIColor.white.cgColor)
+                ctx.fillEllipse(in: CGRect(origin: .zero, size: size))
+
+                // 绘制圆形背景（更鲜艳）
+                color.withAlphaComponent(0.85).setFill()
+                let innerCircle = CGRect(x: 3, y: 3, width: 38, height: 38)
+                let circlePath = UIBezierPath(ovalIn: innerCircle)
+                circlePath.fill()
+
+                // 绘制SF Symbol图标（增大尺寸）
+                let symbolConfig = UIImage.SymbolConfiguration(pointSize: 22, weight: .bold)
+                if let symbolImage = UIImage(systemName: iconName, withConfiguration: symbolConfig) {
+                    UIColor.white.setFill()  // 图标使用白色，对比更强
+                    let imageRect = CGRect(x: 11, y: 11, width: 22, height: 22)
+                    symbolImage.withTintColor(.white, renderingMode: .alwaysOriginal).draw(in: imageRect)
+                }
+            }
+
+            annotationView?.image = image
+
+            // 添加阴影效果，使标记更突出
+            annotationView?.layer.shadowColor = UIColor.black.cgColor
+            annotationView?.layer.shadowOffset = CGSize(width: 0, height: 2)
+            annotationView?.layer.shadowRadius = 4
+            annotationView?.layer.shadowOpacity = 0.5
+
+            return annotationView
+        }
+
+        /// 获取 POI 类型对应的颜色
+        private func typeColor(for type: POIType) -> UIColor {
+            switch type {
+            case .supermarket: return .systemGreen
+            case .hospital: return .systemRed
+            case .pharmacy: return .systemPurple
+            case .gasStation: return .systemOrange
+            default: return .systemBlue
+            }
         }
 
         /// ⭐ 关键方法：用户位置更新时调用
@@ -439,6 +563,7 @@ struct MapViewRepresentable: UIViewRepresentable {
         isTracking: .constant(false),
         isPathClosed: .constant(false),
         territories: [],
-        currentUserId: nil
+        currentUserId: nil,
+        nearbyPOIs: .constant([])
     )
 }

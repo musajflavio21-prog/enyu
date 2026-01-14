@@ -23,6 +23,9 @@ struct MapTabView: View {
     /// 认证管理器
     @StateObject private var authManager = AuthManager.shared
 
+    /// 探索管理器
+    @StateObject private var explorationManager = ExplorationManager.shared
+
     /// 已加载的领地列表
     @State private var territories: [Territory] = []
 
@@ -76,6 +79,25 @@ struct MapTabView: View {
     /// 碰撞警告级别
     @State private var collisionWarningLevel: WarningLevel = .safe
 
+    // MARK: - 探索功能状态
+
+    /// 是否显示探索结果
+    @State private var showExplorationResult = false
+
+    /// 探索结果数据
+    @State private var explorationResult: ExplorationResult?
+
+    /// 探索信息刷新触发器
+    @State private var explorationInfoRefresh = false
+
+    /// 探索信息刷新定时器
+    @State private var explorationInfoTimer: Timer?
+
+    // MARK: - Day 22: POI 搜刮状态
+
+    /// 是否显示搜刮结果
+    @State private var showScavengeResult = false
+
     // MARK: - 视图
 
     var body: some View {
@@ -89,14 +111,20 @@ struct MapTabView: View {
                 isTracking: $locationManager.isTracking,
                 isPathClosed: $locationManager.isPathClosed,
                 territories: territories,
-                currentUserId: authManager.currentUser?.id.uuidString
+                currentUserId: authManager.currentUser?.id.uuidString,
+                nearbyPOIs: $explorationManager.nearbyPOIs
             )
             .ignoresSafeArea()
 
             // 覆盖层
             VStack {
                 // 顶部信息卡片
-                if showCoordinateInfo {
+                if explorationManager.isExploring {
+                    // 探索状态栏（优先显示）
+                    explorationInfoCard
+                        .padding(.top, 60)
+                        .padding(.horizontal, 16)
+                } else if showCoordinateInfo {
                     if locationManager.isTracking {
                         trackingInfoCard
                             .padding(.top, 60)
@@ -118,17 +146,22 @@ struct MapTabView: View {
                             .padding(.horizontal, 16)
                     }
 
-                    HStack(alignment: .bottom) {
-                        // 圈地按钮
+                    // 三个按钮水平分布
+                    HStack(alignment: .center, spacing: 0) {
+                        // 左侧：圈地按钮
                         trackingButton
-                            .padding(.leading, 16)
 
                         Spacer()
 
-                        // 定位按钮
+                        // 中间：定位按钮
                         locationButton
-                            .padding(.trailing, 16)
+
+                        Spacer()
+
+                        // 右侧：探索按钮
+                        exploreButton
                     }
+                    .padding(.horizontal, 16)
                 }
                 .padding(.bottom, 120)
             }
@@ -221,6 +254,35 @@ struct MapTabView: View {
                         }
                     }
                 }
+            }
+        }
+        // Day 22: POI 接近弹窗
+        .sheet(isPresented: $explorationManager.showPOIPopup) {
+            if let poi = explorationManager.currentProximityPOI {
+                POIProximityPopup(
+                    poi: poi,
+                    onScavenge: {
+                        explorationManager.scavengePOI(poi)
+                        showScavengeResult = true
+                    },
+                    onDismiss: {
+                        explorationManager.showPOIPopup = false
+                    }
+                )
+            }
+        }
+        // Day 22: 搜刮结果弹窗
+        .sheet(isPresented: $showScavengeResult) {
+            if let items = explorationManager.lastScavengedItems,
+               let poiName = explorationManager.currentProximityPOI?.name {
+                ScavengeResultView(
+                    poiName: poiName,
+                    items: items,
+                    onConfirm: {
+                        showScavengeResult = false
+                        explorationManager.showPOIPopup = false
+                    }
+                )
             }
         }
     }
@@ -410,17 +472,17 @@ struct MapTabView: View {
                 }
             }
         }) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Image(systemName: locationManager.isTracking ? "stop.fill" : "flag.fill")
-                    .font(.system(size: 16))
+                    .font(.system(size: 14))
                 Text(locationManager.isTracking ? "结束圈地" : "开始圈地")
-                    .font(.headline)
+                    .font(.system(size: 14, weight: .semibold))
             }
             .foregroundColor(.white)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(
-                RoundedRectangle(cornerRadius: 25)
+                RoundedRectangle(cornerRadius: 20)
                     .fill(locationManager.isTracking ? ApocalypseTheme.danger : ApocalypseTheme.primary)
             )
             .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 3)
@@ -459,6 +521,271 @@ struct MapTabView: View {
                     .font(.system(size: 22))
                     .foregroundColor(locationManager.isAuthorized ? ApocalypseTheme.primary : ApocalypseTheme.textSecondary)
             }
+        }
+    }
+
+    /// 探索按钮
+    private var exploreButton: some View {
+        Button(action: {
+            Task {
+                await toggleExploration()
+            }
+        }) {
+            HStack(spacing: 6) {
+                if explorationManager.isExploring {
+                    Image(systemName: "stop.fill")
+                        .font(.system(size: 14))
+                    Text("结束探索")
+                        .font(.system(size: 14, weight: .semibold))
+                } else {
+                    Image(systemName: "binoculars.fill")
+                        .font(.system(size: 14))
+                    Text("探索")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(explorationManager.isExploring ? ApocalypseTheme.danger : ApocalypseTheme.primary)
+            )
+            .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 3)
+        }
+        .disabled(!locationManager.isAuthorized || locationManager.isTracking)
+        .opacity((!locationManager.isAuthorized || locationManager.isTracking) ? 0.5 : 1.0)
+        .sheet(isPresented: $showExplorationResult) {
+            if let result = explorationResult {
+                ExplorationResultView(explorationResult: result)
+            }
+        }
+    }
+
+    /// 切换探索状态
+    private func toggleExploration() async {
+        if explorationManager.isExploring {
+            // 结束探索
+            stopExplorationInfoTimer()
+            if let result = await explorationManager.stopExploration() {
+                explorationResult = result
+                showExplorationResult = true
+            }
+        } else {
+            // 开始探索
+            await explorationManager.startExploration()
+            startExplorationInfoTimer()
+        }
+    }
+
+    /// 启动探索信息刷新定时器
+    private func startExplorationInfoTimer() {
+        explorationInfoTimer?.invalidate()
+        explorationInfoTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            explorationInfoRefresh.toggle()
+
+            // 处理位置更新
+            if let location = locationManager.userLocation {
+                let clLocation = CLLocation(latitude: location.latitude, longitude: location.longitude)
+                Task { @MainActor in
+                    explorationManager.handleLocationUpdate(clLocation)
+                }
+            }
+        }
+    }
+
+    /// 停止探索信息刷新定时器
+    private func stopExplorationInfoTimer() {
+        explorationInfoTimer?.invalidate()
+        explorationInfoTimer = nil
+    }
+
+    /// 探索状态信息卡片
+    private var explorationInfoCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // 标题
+            HStack {
+                // 闪烁的探索指示器
+                Circle()
+                    .fill(ApocalypseTheme.primary)
+                    .frame(width: 10, height: 10)
+                    .opacity(explorationInfoRefresh ? 1.0 : 0.3)
+                    .animation(.easeInOut(duration: 0.5), value: explorationInfoRefresh)
+
+                Text("正在探索")
+                    .font(.headline)
+                    .foregroundColor(ApocalypseTheme.textPrimary)
+
+                Spacer()
+
+                // 奖励等级徽章
+                HStack(spacing: 4) {
+                    Image(systemName: explorationManager.currentTier.icon)
+                        .font(.system(size: 12))
+                    Text(explorationManager.currentTier.displayName)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(tierColor(explorationManager.currentTier))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(tierColor(explorationManager.currentTier).opacity(0.2))
+                )
+
+                // Day22+ 密度等级徽章
+                HStack(spacing: 4) {
+                    Image(systemName: densityIcon(explorationManager.densityTier))
+                        .font(.system(size: 12))
+                    Text(explorationManager.densityTier.displayName)
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(densityColor(explorationManager.densityTier))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(densityColor(explorationManager.densityTier).opacity(0.2))
+                )
+            }
+
+            // Day22+ 附近玩家数量提示
+            if explorationManager.nearbyPlayerCount > 0 {
+                HStack(spacing: 4) {
+                    Image(systemName: "person.2.fill")
+                        .font(.system(size: 12))
+                    Text("附近有 \(explorationManager.nearbyPlayerCount) 位幸存者")
+                        .font(.caption)
+                }
+                .foregroundColor(ApocalypseTheme.textSecondary)
+            }
+
+            // 超速警告（如果存在）
+            if explorationManager.isOverspeedWarning {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 16))
+                        .foregroundColor(.white)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("速度过快！请降低速度")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.white)
+                        Text("超速 \(explorationManager.overspeedCountdown) 秒后将自动停止探索")
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+
+                    Spacer()
+
+                    // 倒计时数字
+                    Text("\(explorationManager.overspeedCountdown)")
+                        .font(.system(size: 24, weight: .bold, design: .monospaced))
+                        .foregroundColor(.white)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white.opacity(0.2))
+                        .clipShape(Circle())
+                }
+                .padding(12)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.red, Color.red.opacity(0.8)]),
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .cornerRadius(12)
+                .shadow(color: .red.opacity(0.4), radius: 8, y: 4)
+            }
+
+            // 探索统计
+            HStack(spacing: 24) {
+                // 距离
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("距离")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                    Text(explorationManager.formattedDistance)
+                        .font(.system(.title3, design: .monospaced))
+                        .fontWeight(.semibold)
+                        .foregroundColor(ApocalypseTheme.primary)
+                        .id(explorationInfoRefresh)
+                }
+
+                // 时长
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("时长")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                    Text(explorationManager.formattedDuration)
+                        .font(.system(.title3, design: .monospaced))
+                        .fontWeight(.semibold)
+                        .foregroundColor(ApocalypseTheme.textPrimary)
+                        .id(explorationInfoRefresh)
+                }
+
+                // 速度
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("速度")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                    Text(String(format: "%.1f km/h", explorationManager.currentSpeed))
+                        .font(.system(.title3, design: .monospaced))
+                        .fontWeight(.semibold)
+                        .foregroundColor(explorationManager.isOverspeedWarning ? .red : ApocalypseTheme.textPrimary)
+                        .id(explorationInfoRefresh)
+                }
+
+                Spacer()
+            }
+
+            // 提示
+            Text("持续行走积累距离，距离越远奖励越好")
+                .font(.caption)
+                .foregroundColor(ApocalypseTheme.textSecondary)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(ApocalypseTheme.cardBackground.opacity(0.95))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(ApocalypseTheme.primary.opacity(0.5), lineWidth: 1)
+                )
+        )
+        .shadow(color: .black.opacity(0.3), radius: 10, x: 0, y: 5)
+    }
+
+    /// 获取奖励等级颜色
+    private func tierColor(_ tier: RewardTier) -> Color {
+        switch tier {
+        case .none: return ApocalypseTheme.textSecondary
+        case .bronze: return Color(red: 0.8, green: 0.5, blue: 0.2)
+        case .silver: return Color(red: 0.75, green: 0.75, blue: 0.75)
+        case .gold: return Color(red: 1.0, green: 0.84, blue: 0.0)
+        case .diamond: return Color(red: 0.0, green: 0.8, blue: 1.0)
+        }
+    }
+
+    /// Day22+ 获取密度等级图标
+    private func densityIcon(_ tier: PlayerDensityTier) -> String {
+        switch tier {
+        case .solo: return "person.fill"
+        case .low: return "person.2.fill"
+        case .medium: return "person.3.fill"
+        case .high: return "person.3.sequence.fill"
+        }
+    }
+
+    /// Day22+ 获取密度等级颜色
+    private func densityColor(_ tier: PlayerDensityTier) -> Color {
+        switch tier {
+        case .solo: return Color.gray
+        case .low: return Color.green
+        case .medium: return Color.orange
+        case .high: return Color.red
         }
     }
 

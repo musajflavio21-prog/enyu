@@ -112,6 +112,11 @@ class LocationManager: NSObject, ObservableObject {
     /// 触发警告需要的连续超速次数
     private let requiredConsecutiveOverSpeed: Int = 2
 
+    // MARK: - 地理围栏属性（Day22 POI搜刮系统）
+
+    /// 地理围栏进入回调（ExplorationManager注册）
+    var geofenceEntryCallback: ((String) -> Void)?
+
     // MARK: - 私有属性
 
     /// CoreLocation 定位管理器
@@ -666,6 +671,30 @@ class LocationManager: NSObject, ObservableObject {
         return false
     }
 
+    // MARK: - 地理围栏方法（Day22 POI搜刮系统）
+
+    /// 开始监控地理围栏
+    /// - Parameter region: 要监控的圆形区域
+    func startMonitoring(region: CLCircularRegion) {
+        locationManager.startMonitoring(for: region)
+        print("🗺️ [围栏] 开始监控: \(region.identifier), 半径: \(region.radius)m")
+    }
+
+    /// 停止监控地理围栏
+    /// - Parameter region: 要停止监控的区域
+    func stopMonitoring(region: CLCircularRegion) {
+        locationManager.stopMonitoring(for: region)
+        print("🗺️ [围栏] 停止监控: \(region.identifier)")
+    }
+
+    /// 停止所有地理围栏监控
+    func stopAllMonitoring() {
+        for region in locationManager.monitoredRegions {
+            locationManager.stopMonitoring(for: region)
+        }
+        print("🗺️ [围栏] 停止所有监控（共 \(locationManager.monitoredRegions.count) 个）")
+    }
+
     // MARK: - 综合验证
 
     /// 综合验证领地是否有效
@@ -791,5 +820,24 @@ extension LocationManager: CLLocationManagerDelegate {
                 self.locationError = "定位失败: \(error.localizedDescription)"
             }
         }
+    }
+
+    // MARK: - 地理围栏 Delegate 方法（Day22 POI搜刮系统）
+
+    /// 进入地理围栏回调
+    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+        guard let circularRegion = region as? CLCircularRegion else { return }
+        print("🗺️ [围栏] 进入POI范围: \(region.identifier)")
+
+        // 通知 ExplorationManager
+        DispatchQueue.main.async {
+            self.geofenceEntryCallback?(region.identifier)
+        }
+    }
+
+    /// 离开地理围栏回调（目前未使用）
+    func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
+        print("🗺️ [围栏] 离开POI范围: \(region.identifier)")
+        // Day22不处理离开事件
     }
 }
