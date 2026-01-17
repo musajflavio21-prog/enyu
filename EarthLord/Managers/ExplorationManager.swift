@@ -1089,31 +1089,67 @@ class ExplorationManager: ObservableObject {
         log("显示搜刮弹窗: \(poi.name)")
     }
 
-    /// 搜刮POI
+    /// 搜刮POI（Day23 集成AI生成）
     func scavengePOI(_ poi: RealPOI) {
         log("开始搜刮POI: \(poi.name)")
 
-        // 生成随机物品
-        let loot = ScavengeManager.shared.generateLoot()
-        log("生成 \(loot.count) 件物品")
+        // 计算物品数量（1-3件随机）
+        let itemCount = Int.random(in: 1...3)
 
-        // 存入背包
+        // 使用AI生成物品（Day23）
         Task { @MainActor in
-            for item in loot {
-                await InventoryManager.shared.addItem(itemId: item.itemId, quantity: item.quantity)
-                log("添加物品: \(item.displayName)")
+            // 尝试AI生成
+            let aiItems = await AIItemGenerator.shared.generateItems(
+                for: poi,
+                dangerLevel: poi.dangerLevel,
+                count: itemCount
+            )
+
+            var loot: [LootRecord]
+
+            if let aiItems = aiItems, !aiItems.isEmpty {
+                // AI生成成功，转换为LootRecord格式
+                loot = aiItems.map { aiItem in
+                    LootRecord(
+                        id: UUID().uuidString,
+                        itemId: "ai_generated_\(UUID().uuidString)",  // AI生成物品使用特殊ID
+                        quantity: 1,  // AI生成的物品默认数量为1
+                        quality: nil,  // AI生成物品无品质系统
+                        aiName: aiItem.name,  // AI生成的名称
+                        aiCategory: aiItem.category,
+                        aiRarity: aiItem.rarity,
+                        aiStory: aiItem.story
+                    )
+                }
+                log("✨ [AI] 成功生成 \(loot.count) 件AI物品")
+                for item in loot {
+                    log("  - \(item.displayName) [\(item.aiRarity ?? "未知")]")
+                }
+            } else {
+                // AI生成失败，使用降级方案
+                log("⚠️ [AI] 生成失败，使用备用物品生成")
+                loot = ScavengeManager.shared.generateLoot()
+                log("生成 \(loot.count) 件备用物品")
             }
+
+            // 存入背包（AI生成物品暂时不存数据库，仅在搜刮结果中显示）
+            // TODO: 后续可考虑将AI物品持久化到数据库
+            for item in loot where !item.isAIGenerated {
+                // 只有非AI物品才存入背包
+                await InventoryManager.shared.addItem(itemId: item.itemId, quantity: item.quantity)
+                log("添加物品到背包: \(item.displayName)")
+            }
+
+            // 标记已搜刮
+            if let index = nearbyPOIs.firstIndex(where: { $0.id == poi.id }) {
+                nearbyPOIs[index].hasBeenScavenged = true
+                log("标记POI已搜刮: \(poi.name)")
+            }
+
+            lastScavengedItems = loot  // 保存最近搜刮的物品（用于结果展示）
+
+            log("搜刮完成: \(poi.name)，获得 \(loot.count) 件物品")
         }
-
-        // 标记已搜刮
-        if let index = nearbyPOIs.firstIndex(where: { $0.id == poi.id }) {
-            nearbyPOIs[index].hasBeenScavenged = true
-            log("标记POI已搜刮: \(poi.name)")
-        }
-
-        lastScavengedItems = loot
-
-        log("搜刮完成: \(poi.name)，获得 \(loot.count) 件物品")
     }
 
     /// 停止探索时清理围栏

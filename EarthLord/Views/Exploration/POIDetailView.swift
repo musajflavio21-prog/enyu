@@ -43,6 +43,8 @@ struct POIDetailView: View {
             return .brown
         case .residence:
             return .blue
+        case .restaurant:
+            return .orange
         }
     }
 

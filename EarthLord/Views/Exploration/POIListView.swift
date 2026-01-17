@@ -360,6 +360,8 @@ struct POICardContent: View {
             return .brown
         case .residence:
             return .blue
+        case .restaurant:
+            return .orange
         }
     }
 
@@ -380,6 +382,8 @@ struct POICardContent: View {
             return "shippingbox.fill"
         case .residence:
             return "house.fill"
+        case .restaurant:
+            return "fork.knife"
         }
     }
 

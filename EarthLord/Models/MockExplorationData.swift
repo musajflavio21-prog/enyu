@@ -24,9 +24,10 @@ enum POIType: String, Codable {
     case hospital       // 医院
     case gasStation     // 加油站
     case pharmacy       // 药店
-    case factory        // 工厂
+    case factory        // 工厂（化工厂）
     case warehouse      // 仓库
-    case residence      // 住宅
+    case residence      // 住宅（废弃建筑）
+    case restaurant     // 餐厅/美食
 }
 
 /// 兴趣点（Point of Interest）模型
@@ -414,19 +415,39 @@ struct MockBackpackData {
 /// 用途：记录单次探索获得的物品
 struct LootRecord: Identifiable, Codable {
     let id: String
-    let itemId: String          // 物品定义ID
+    let itemId: String          // 物品定义ID（AI生成时为"ai_generated_xxx"）
     let quantity: Int           // 获得数量
-    let quality: ItemQuality?   // 品质（可选）
+    let quality: ItemQuality?   // 品质（可选，仅非AI物品）
 
-    /// 获取物品定义
+    // Day23 AI生成物品字段
+    var aiName: String?         // AI生成的独特名称
+    var aiCategory: String?     // AI生成的分类（医疗/食物/工具/武器/材料）
+    var aiRarity: String?       // AI生成的稀有度（common/uncommon/rare/epic/legendary）
+    var aiStory: String?        // AI生成的背景故事
+
+    /// 是否为AI生成物品
+    var isAIGenerated: Bool {
+        return itemId.hasPrefix("ai_generated_")
+    }
+
+    /// 获取物品定义（仅非AI物品）
     var definition: ItemDefinition? {
+        guard !isAIGenerated else { return nil }
         return MockItemDefinitions.getDefinition(for: itemId)
     }
 
-    /// 显示名称（带数量）
+    /// 显示名称（优先使用AI名称）
     var displayName: String {
-        guard let def = definition else { return "未知物品 x\(quantity)" }
-        return "\(def.name) x\(quantity)"
+        if let aiName = aiName {
+            return aiName
+        }
+        guard let def = definition else { return "未知物品" }
+        return def.name
+    }
+
+    /// 显示名称（带数量）
+    var displayNameWithQuantity: String {
+        return "\(displayName) x\(quantity)"
     }
 }
 
@@ -603,16 +624,17 @@ extension ItemRarity {
 }
 
 extension POIType {
-    /// POI 类型图标
+    /// POI 类型图标（废土风格）
     var iconName: String {
         switch self {
-        case .supermarket: return "cart.fill"
-        case .hospital: return "cross.fill"
-        case .gasStation: return "fuelpump.fill"
-        case .pharmacy: return "pills.fill"
-        case .factory: return "building.2.fill"
-        case .warehouse: return "shippingbox.fill"
-        case .residence: return "house.fill"
+        case .supermarket: return "shippingbox.fill"        // 📦 箱子
+        case .hospital: return "cross.fill"                 // ➕ 十字
+        case .gasStation: return "fuelpump.fill"            // ⛽ 油泵
+        case .pharmacy: return "pills.fill"                 // 💊 药丸
+        case .factory: return "flask.fill"                  // ⚗️ 试剂瓶（化工厂）
+        case .warehouse: return "shippingbox.fill"          // 📦 箱子
+        case .residence: return "building.2.crop.circle"    // 🏚️ 废弃建筑
+        case .restaurant: return "fork.knife"               // 🍴 餐具
         }
     }
 
@@ -623,9 +645,10 @@ extension POIType {
         case .hospital: return "医院"
         case .gasStation: return "加油站"
         case .pharmacy: return "药店"
-        case .factory: return "工厂"
+        case .factory: return "化工厂"
         case .warehouse: return "仓库"
-        case .residence: return "住宅"
+        case .residence: return "废弃建筑"
+        case .restaurant: return "餐厅"
         }
     }
 }
@@ -640,6 +663,19 @@ struct RealPOI: Identifiable, Equatable {
     let type: POIType           // 映射到游戏类型
     let coordinate: CLLocationCoordinate2D
     var hasBeenScavenged: Bool  // 是否已搜刮（本次探索）
+
+    /// 根据POI类型计算危险值（Day23 AI生成物品）
+    /// 危险值决定AI生成物品的稀有度分布
+    var dangerLevel: Int {
+        switch type {
+        case .hospital, .factory, .warehouse:
+            return 4  // 高危：优秀40%, 稀有35%, 史诗20%, 传奇5%
+        case .pharmacy, .gasStation:
+            return 3  // 中危：普通50%, 优秀30%, 稀有15%, 史诗5%
+        case .supermarket, .residence, .restaurant:
+            return 2  // 低危：普通70%, 优秀25%, 稀有5%
+        }
+    }
 
     /// 实现 Equatable
     static func == (lhs: RealPOI, rhs: RealPOI) -> Bool {

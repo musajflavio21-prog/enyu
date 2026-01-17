@@ -457,14 +457,17 @@ struct MapViewRepresentable: UIViewRepresentable {
             return annotationView
         }
 
-        /// 获取 POI 类型对应的颜色
+        /// 获取 POI 类型对应的颜色（废土风格配色）
         private func typeColor(for type: POIType) -> UIColor {
             switch type {
-            case .supermarket: return .systemGreen
-            case .hospital: return .systemRed
-            case .pharmacy: return .systemPurple
-            case .gasStation: return .systemOrange
-            default: return .systemBlue
+            case .supermarket: return .systemGreen      // 绿色 #34C759
+            case .hospital: return .systemRed           // 红色 #FF3B30
+            case .pharmacy: return .systemRed           // 红色 #FF3B30
+            case .restaurant: return .systemOrange      // 橙色 #FF9500
+            case .gasStation: return .systemYellow      // 黄色 #FFCC00
+            case .factory: return .systemPurple         // 紫色 #AF52DE
+            case .warehouse: return .systemBlue         // 蓝色 #007AFF
+            case .residence: return .systemGray         // 灰色 #8E8E93
             }
         }
 
