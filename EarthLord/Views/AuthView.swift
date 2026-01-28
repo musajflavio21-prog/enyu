@@ -609,7 +609,10 @@ struct AuthView: View {
         VStack(spacing: 12) {
             // Apple 登录按钮
             Button {
-                showToastMessage("Apple 登录即将开放")
+                print("🍎 [AuthView] 用户点击了 Apple 登录按钮")
+                Task {
+                    await authManager.signInWithApple()
+                }
             } label: {
                 HStack {
                     Image(systemName: "apple.logo")

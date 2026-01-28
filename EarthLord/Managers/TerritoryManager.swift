@@ -11,6 +11,13 @@ import CoreLocation
 import Combine
 import Supabase
 
+// MARK: - 通知名称扩展
+
+extension Notification.Name {
+    /// 领地数据更新通知（用于刷新 UI）
+    static let territoryUpdated = Notification.Name("territoryUpdated")
+}
+
 /// 领地管理器
 @MainActor
 class TerritoryManager: ObservableObject {
@@ -302,12 +309,50 @@ class TerritoryManager: ObservableObject {
             print("✅ [领地] 删除成功")
             TerritoryLogger.shared.log("领地已删除", type: .info)
             isLoading = false
+
+            // 发送更新通知
+            NotificationCenter.default.post(name: .territoryUpdated, object: nil)
+
             return true
 
         } catch {
             print("❌ [领地] 删除失败: \(error)")
             TerritoryLogger.shared.log("删除失败: \(error.localizedDescription)", type: .error)
             errorMessage = "删除失败: \(error.localizedDescription)"
+            isLoading = false
+            return false
+        }
+    }
+
+    /// 重命名领地
+    /// - Parameters:
+    ///   - territoryId: 领地 ID
+    ///   - newName: 新名称
+    /// - Returns: 是否成功
+    func updateTerritoryName(territoryId: String, newName: String) async -> Bool {
+        print("✏️ [领地] 重命名领地: \(territoryId) -> \(newName)")
+        isLoading = true
+
+        do {
+            try await supabase
+                .from("territories")
+                .update(["name": newName])
+                .eq("id", value: territoryId)
+                .execute()
+
+            print("✅ [领地] 重命名成功")
+            TerritoryLogger.shared.log("领地重命名成功: \(newName)", type: .success)
+            isLoading = false
+
+            // 发送更新通知
+            NotificationCenter.default.post(name: .territoryUpdated, object: nil)
+
+            return true
+
+        } catch {
+            print("❌ [领地] 重命名失败: \(error)")
+            TerritoryLogger.shared.log("重命名失败: \(error.localizedDescription)", type: .error)
+            errorMessage = "重命名失败: \(error.localizedDescription)"
             isLoading = false
             return false
         }

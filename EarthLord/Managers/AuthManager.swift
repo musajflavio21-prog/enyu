@@ -9,6 +9,8 @@ import Foundation
 import Combine
 import Supabase
 import GoogleSignIn
+import AuthenticationServices
+import CryptoKit
 
 /// 认证管理器
 /// 负责处理用户注册、登录、找回密码等认证相关功能
@@ -62,6 +64,9 @@ class AuthManager: ObservableObject {
 
     /// Google Client ID
     private let googleClientID = "1032664613546-f4f8ni3cobpjlqf6fmrhvce335f8utfl.apps.googleusercontent.com"
+
+    /// Apple Sign In 的 nonce（用于安全验证）
+    private var currentNonce: String?
 
     // MARK: - 初始化
 
@@ -362,16 +367,157 @@ class AuthManager: ObservableObject {
         isLoading = false
     }
 
-    // MARK: - 第三方登录（预留）
+    // MARK: - 第三方登录
 
     /// 使用 Apple 登录
-    /// - Note: TODO: 实现 Apple Sign In
+    /// - Note: 使用 AuthenticationServices 获取 Apple 凭证，然后通过 Supabase 验证
     func signInWithApple() async {
-        // TODO: 实现 Apple Sign In
-        // 1. 使用 AuthenticationServices 获取 Apple 凭证
-        // 2. 调用 supabase.auth.signInWithIdToken(credentials:)
-        // 3. 设置 isAuthenticated = true
-        print("⚠️ Apple 登录功能待实现")
+        print("🍎 [Apple登录] 开始 Apple 登录流程...")
+        isLoading = true
+        errorMessage = nil
+
+        // 生成随机 nonce 用于安全验证
+        let nonce = randomNonceString()
+        currentNonce = nonce
+
+        // 创建 Apple ID 请求
+        let appleIDProvider = ASAuthorizationAppleIDProvider()
+        let request = appleIDProvider.createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = sha256(nonce)
+
+        // 创建授权控制器
+        let authorizationController = ASAuthorizationController(authorizationRequests: [request])
+
+        // 使用 continuation 来等待授权结果
+        do {
+            let result = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<ASAuthorization, Error>) in
+                let delegate = AppleSignInDelegate(continuation: continuation)
+                authorizationController.delegate = delegate
+                authorizationController.presentationContextProvider = delegate
+
+                // 保持 delegate 引用
+                objc_setAssociatedObject(authorizationController, "delegate", delegate, .OBJC_ASSOCIATION_RETAIN)
+
+                authorizationController.performRequests()
+            }
+
+            // 处理授权结果
+            await handleAppleSignInResult(result)
+
+        } catch let error as ASAuthorizationError {
+            print("❌ [Apple登录] ASAuthorizationError: \(error.localizedDescription)")
+            switch error.code {
+            case .canceled:
+                print("ℹ️ [Apple登录] 用户取消了登录")
+                errorMessage = nil
+            case .invalidResponse:
+                errorMessage = "Apple 登录失败：响应无效"
+            case .notHandled:
+                errorMessage = "Apple 登录失败：请求未处理"
+            case .failed:
+                errorMessage = "Apple 登录失败：\(error.localizedDescription)"
+            case .notInteractive:
+                errorMessage = "Apple 登录失败：需要用户交互"
+            case .unknown:
+                errorMessage = "Apple 登录失败：未知错误"
+            @unknown default:
+                errorMessage = "Apple 登录失败：\(error.localizedDescription)"
+            }
+        } catch {
+            print("❌ [Apple登录] 错误: \(error)")
+            errorMessage = "Apple 登录失败: \(error.localizedDescription)"
+        }
+
+        isLoading = false
+    }
+
+    /// 处理 Apple 登录结果
+    private func handleAppleSignInResult(_ authorization: ASAuthorization) async {
+        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            print("❌ [Apple登录] 无法获取 Apple ID 凭证")
+            errorMessage = "Apple 登录失败：无法获取凭证"
+            return
+        }
+
+        // 获取 identity token
+        guard let identityTokenData = appleIDCredential.identityToken,
+              let identityToken = String(data: identityTokenData, encoding: .utf8) else {
+            print("❌ [Apple登录] 无法获取 identity token")
+            errorMessage = "Apple 登录失败：无法获取令牌"
+            return
+        }
+
+        print("✅ [Apple登录] 成功获取 identity token (长度: \(identityToken.count))")
+
+        // 获取用户信息（仅首次登录时可用）
+        let fullName = appleIDCredential.fullName
+        let email = appleIDCredential.email
+
+        if let email = email {
+            print("🍎 [Apple登录] 用户邮箱: \(email)")
+        }
+        if let fullName = fullName {
+            let name = [fullName.givenName, fullName.familyName]
+                .compactMap { $0 }
+                .joined(separator: " ")
+            if !name.isEmpty {
+                print("🍎 [Apple登录] 用户姓名: \(name)")
+            }
+        }
+
+        // 使用 Supabase 验证 Apple 凭证
+        do {
+            print("🍎 [Apple登录] 正在向 Supabase 发送验证请求...")
+            let session = try await supabase.auth.signInWithIdToken(
+                credentials: .init(
+                    provider: .apple,
+                    idToken: identityToken,
+                    nonce: currentNonce
+                )
+            )
+
+            // 登录成功
+            currentUser = session.user
+            isAuthenticated = true
+
+            print("✅ [Apple登录] Supabase 验证成功！")
+            print("✅ [Apple登录] 用户 ID: \(session.user.id)")
+            print("✅ [Apple登录] 用户邮箱: \(session.user.email ?? "未知")")
+            print("🎉 [Apple登录] Apple 登录流程完成！")
+
+        } catch {
+            print("❌ [Apple登录] Supabase 验证失败: \(error)")
+            errorMessage = "Apple 登录失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 生成随机 nonce 字符串
+    private func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        var randomBytes = [UInt8](repeating: 0, count: length)
+        let errorCode = SecRandomCopyBytes(kSecRandomDefault, randomBytes.count, &randomBytes)
+        if errorCode != errSecSuccess {
+            fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)")
+        }
+
+        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        let nonce = randomBytes.map { byte in
+            charset[Int(byte) % charset.count]
+        }
+
+        return String(nonce)
+    }
+
+    /// 对字符串进行 SHA256 哈希
+    private func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashedData = SHA256.hash(data: inputData)
+        let hashString = hashedData.compactMap {
+            String(format: "%02x", $0)
+        }.joined()
+
+        return hashString
     }
 
     /// 使用 Google 登录
@@ -629,5 +775,39 @@ class AuthManager: ObservableObject {
     /// 清除错误信息
     func clearError() {
         errorMessage = nil
+    }
+}
+
+// MARK: - Apple Sign In Delegate
+
+/// Apple Sign In 代理类
+/// 用于处理 ASAuthorizationController 的回调
+private class AppleSignInDelegate: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
+
+    private let continuation: CheckedContinuation<ASAuthorization, Error>
+
+    init(continuation: CheckedContinuation<ASAuthorization, Error>) {
+        self.continuation = continuation
+        super.init()
+    }
+
+    // MARK: - ASAuthorizationControllerDelegate
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
+        continuation.resume(returning: authorization)
+    }
+
+    func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        continuation.resume(throwing: error)
+    }
+
+    // MARK: - ASAuthorizationControllerPresentationContextProviding
+
+    func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first else {
+            fatalError("No window found")
+        }
+        return window
     }
 }

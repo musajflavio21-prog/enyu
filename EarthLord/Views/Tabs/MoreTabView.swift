@@ -14,6 +14,74 @@ struct MoreTabView: View {
     var body: some View {
         NavigationStack {
             List {
+                // 社交功能区域
+                Section {
+                    // 聊天
+                    NavigationLink {
+                        ChatView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "bubble.left.and.bubble.right.fill")
+                                .font(.title2)
+                                .foregroundColor(.green)
+                                .frame(width: 32)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("聊天")
+                                    .font(.body)
+                                Text("公共频道与附近玩家")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    // 排行榜
+                    NavigationLink {
+                        LeaderboardView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "chart.bar.fill")
+                                .font(.title2)
+                                .foregroundColor(.yellow)
+                                .frame(width: 32)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("排行榜")
+                                    .font(.body)
+                                Text("查看各类排名")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    // 成就
+                    NavigationLink {
+                        AchievementView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "trophy.fill")
+                                .font(.title2)
+                                .foregroundColor(.orange)
+                                .frame(width: 32)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("成就")
+                                    .font(.body)
+                                Text("查看成就进度")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                } header: {
+                    Text("社交")
+                }
+
                 // 设置区域
                 Section {
                     // 语言设置

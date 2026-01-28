@@ -316,6 +316,14 @@ struct ProfileTabView: View {
             menuItem(icon: "questionmark.circle", title: "帮助与反馈", subtitle: "常见问题和意见反馈")
             Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
 
+            // 技术支持链接
+            linkMenuItem(icon: "lifepreserver", title: "技术支持", subtitle: "访问支持页面获取帮助", url: "https://musajflavio21-prog.github.io/earthlord-support/")
+            Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
+
+            // 隐私政策链接
+            linkMenuItem(icon: "hand.raised", title: "隐私政策", subtitle: "查看我们的隐私保护政策", url: "https://musajflavio21-prog.github.io/earthlord-support/privacy.html")
+            Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
+
             // 删除账号菜单项
             deleteAccountMenuItem
         }
@@ -385,6 +393,40 @@ struct ProfileTabView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             // TODO: 导航到对应页面
+        }
+    }
+
+    // 链接菜单项（打开外部网页）
+    private func linkMenuItem(icon: String, title: String, subtitle: String, url: String) -> some View {
+        Button(action: {
+            if let url = URL(string: url) {
+                UIApplication.shared.open(url)
+            }
+        }) {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(ApocalypseTheme.primary)
+                    .frame(width: 32)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body)
+                        .foregroundColor(ApocalypseTheme.textPrimary)
+
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "arrow.up.forward.square")
+                    .font(.caption)
+                    .foregroundColor(ApocalypseTheme.textSecondary)
+            }
+            .padding()
+            .contentShape(Rectangle())
         }
     }
 

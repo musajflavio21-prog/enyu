@@ -121,11 +121,7 @@ struct ResourcesTabView: View {
             )
 
         case .trade:
-            PlaceholderContentView(
-                icon: "arrow.triangle.2.circlepath",
-                title: "交易市场",
-                message: "功能开发中"
-            )
+            TradeMainView()
         }
     }
 }

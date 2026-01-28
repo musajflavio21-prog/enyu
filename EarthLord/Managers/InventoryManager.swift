@@ -343,4 +343,180 @@ class InventoryManager: ObservableObject {
     func clearError() {
         errorMessage = nil
     }
+
+    // MARK: - 交易系统内部方法
+
+    /// 获取指定物品的可用数量
+    /// - Parameter itemId: 物品定义 ID
+    /// - Returns: 可用数量
+    func getAvailableQuantity(itemId: String) -> Int {
+        return items.filter { $0.itemId == itemId }.reduce(0) { $0 + $1.quantity }
+    }
+
+    /// 为交易扣除物品（内部方法）
+    /// - Parameters:
+    ///   - itemId: 物品定义 ID
+    ///   - quantity: 扣除数量
+    /// - Returns: 是否成功
+    func deductItemForTrade(itemId: String, quantity: Int) async -> Bool {
+        guard let userId = AuthManager.shared.currentUser?.id else {
+            print("❌ [背包] 交易扣除失败：未登录")
+            return false
+        }
+
+        // 查找背包中对应物品
+        guard let existingIndex = items.firstIndex(where: { $0.itemId == itemId }) else {
+            print("❌ [背包] 交易扣除失败：物品不存在")
+            return false
+        }
+
+        let existingItem = items[existingIndex]
+        guard existingItem.quantity >= quantity else {
+            print("❌ [背包] 交易扣除失败：数量不足")
+            return false
+        }
+
+        do {
+            let newQuantity = existingItem.quantity - quantity
+
+            if newQuantity <= 0 {
+                // 删除物品
+                try await supabase
+                    .from("inventory_items")
+                    .delete()
+                    .eq("id", value: existingItem.id.uuidString)
+                    .execute()
+
+                items.removeAll { $0.id == existingItem.id }
+                print("🎒 [背包] 交易扣除：删除物品 \(itemId)")
+            } else {
+                // 更新数量
+                try await supabase
+                    .from("inventory_items")
+                    .update(["quantity": newQuantity])
+                    .eq("id", value: existingItem.id.uuidString)
+                    .execute()
+
+                items[existingIndex].quantity = newQuantity
+                print("🎒 [背包] 交易扣除：\(itemId) 剩余 \(newQuantity)")
+            }
+
+            return true
+        } catch {
+            print("❌ [背包] 交易扣除数据库错误: \(error)")
+            return false
+        }
+    }
+
+    /// 为交易添加物品到当前用户背包（内部方法）
+    /// - Parameters:
+    ///   - itemId: 物品定义 ID
+    ///   - quantity: 添加数量
+    /// - Returns: 是否成功
+    func addItemForTrade(itemId: String, quantity: Int) async -> Bool {
+        return await addItem(itemId: itemId, quantity: quantity, quality: nil)
+    }
+
+    /// 为交易添加物品到指定用户背包（内部方法）
+    /// - Parameters:
+    ///   - userId: 目标用户 ID
+    ///   - itemId: 物品定义 ID
+    ///   - quantity: 添加数量
+    /// - Returns: 是否成功
+    func addItemForTradeToUser(userId: UUID, itemId: String, quantity: Int) async -> Bool {
+        do {
+            // 检查目标用户是否已有相同物品
+            let existingItems: [InventoryItem] = try await supabase
+                .from("inventory_items")
+                .select()
+                .eq("user_id", value: userId.uuidString)
+                .eq("item_id", value: itemId)
+                .execute()
+                .value
+
+            if let existingItem = existingItems.first {
+                // 更新数量
+                let newQuantity = existingItem.quantity + quantity
+                try await supabase
+                    .from("inventory_items")
+                    .update(["quantity": newQuantity])
+                    .eq("id", value: existingItem.id.uuidString)
+                    .execute()
+
+                print("🎒 [背包] 交易添加到用户 \(userId)：更新 \(itemId) x\(newQuantity)")
+            } else {
+                // 插入新物品
+                let newItem = NewInventoryItem(
+                    userId: userId.uuidString,
+                    itemId: itemId,
+                    quantity: quantity,
+                    quality: nil
+                )
+
+                try await supabase
+                    .from("inventory_items")
+                    .insert(newItem)
+                    .execute()
+
+                print("🎒 [背包] 交易添加到用户 \(userId)：新增 \(itemId) x\(quantity)")
+            }
+
+            return true
+        } catch {
+            print("❌ [背包] 交易添加到用户背包失败: \(error)")
+            return false
+        }
+    }
+
+    // MARK: - 开发者测试方法
+
+    #if DEBUG
+    /// 添加测试资源（用于建造系统测试）
+    func addTestResources() async -> Bool {
+        print("🎒 [背包] 开始添加测试资源...")
+
+        let testResources: [(id: String, name: String, quantity: Int)] = [
+            ("wood", "木材", 200),
+            ("stone", "石头", 150),
+            ("metal", "金属", 100),
+            ("glass", "玻璃", 50)
+        ]
+
+        for resource in testResources {
+            let success = await addItem(itemId: resource.id, quantity: resource.quantity, quality: nil)
+            if success {
+                print("🎒 [背包] ✅ 添加 \(resource.name) x\(resource.quantity)")
+            } else {
+                print("🎒 [背包] ❌ 添加 \(resource.name) 失败")
+                return false
+            }
+        }
+
+        print("🎒 [背包] ✅ 测试资源添加完成")
+        return true
+    }
+
+    /// 清空所有背包物品（用于测试）
+    func clearAllItems() async -> Bool {
+        guard let userId = AuthManager.shared.currentUser?.id else {
+            errorMessage = "请先登录"
+            return false
+        }
+
+        do {
+            try await supabase
+                .from("inventory_items")
+                .delete()
+                .eq("user_id", value: userId.uuidString)
+                .execute()
+
+            items = []
+            print("🎒 [背包] ✅ 已清空所有物品")
+            return true
+        } catch {
+            print("❌ [背包] 清空背包失败: \(error)")
+            return false
+        }
+    }
+    #endif
 }
