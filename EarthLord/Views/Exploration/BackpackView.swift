@@ -447,7 +447,7 @@ struct CategoryButton: View {
                 Text(title)
                     .font(.system(size: 13, weight: .medium))
             }
-            .foregroundColor(isSelected ? .white : ApocalypseTheme.textSecondary)
+            .foregroundColor(isSelected ? .white : ApocalypseTheme.textPrimary)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background(
@@ -456,7 +456,7 @@ struct CategoryButton: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
-                    .stroke(isSelected ? color : Color.clear, lineWidth: 1)
+                    .stroke(ApocalypseTheme.primary, lineWidth: 1.5)
             )
         }
     }

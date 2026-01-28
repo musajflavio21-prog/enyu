@@ -112,7 +112,7 @@ struct AchievementView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
                 // 全部
-                CategoryButton(
+                AchievementCategoryButton(
                     title: "全部",
                     iconName: "square.grid.2x2.fill",
                     isSelected: selectedCategory == nil
@@ -122,7 +122,7 @@ struct AchievementView: View {
 
                 // 各类别
                 ForEach(AchievementCategory.allCases, id: \.rawValue) { category in
-                    CategoryButton(
+                    AchievementCategoryButton(
                         title: category.displayName,
                         iconName: category.iconName,
                         isSelected: selectedCategory == category
@@ -210,7 +210,7 @@ struct AchievementView: View {
 
 // MARK: - 类别按钮
 
-struct CategoryButton: View {
+struct AchievementCategoryButton: View {
     let title: String
     let iconName: String
     let isSelected: Bool

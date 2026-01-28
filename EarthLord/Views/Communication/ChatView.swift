@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 /// 聊天视图
 struct ChatView: View {
@@ -175,7 +176,7 @@ struct ChatView: View {
                     ForEach(communicationManager.messages) { message in
                         MessageBubbleView(
                             message: message,
-                            isFromCurrentUser: message.isFromCurrentUser(currentUserId: authManager.currentUser?.id)
+                            isFromCurrentUser: message.isFromCurrentUser(currentUserId: authManager.currentUserId)
                         )
                         .id(message.id)
                     }

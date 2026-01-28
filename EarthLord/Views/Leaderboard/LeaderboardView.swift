@@ -178,7 +178,7 @@ struct LeaderboardView: View {
                     LeaderboardEntryRow(
                         entry: entry,
                         type: leaderboardManager.currentType,
-                        isCurrentUser: entry.userId == AuthManager.shared.currentUser?.id
+                        isCurrentUser: entry.userId == AuthManager.shared.currentUserId
                     )
                 }
 

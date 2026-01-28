@@ -42,8 +42,14 @@ class CommunicationManager: ObservableObject {
     /// 错误信息
     @Published var errorMessage: String?
 
-    /// 当前通讯设备类型
-    @Published var currentDevice: CommunicationDeviceType = .advanced
+    /// 当前通讯设备类型（旧版，保留兼容）
+    @Published var currentDeviceType: CommunicationDeviceType = .advanced
+
+    /// 通讯设备列表（新版）
+    @Published private(set) var devices: [CommunicationDevice] = []
+
+    /// 当前设备（新版）
+    @Published private(set) var currentDevice: CommunicationDevice?
 
     // MARK: - 私有属性
 
@@ -203,7 +209,7 @@ class CommunicationManager: ObservableObject {
         }
 
         // 4. 检查频道权限
-        if channel == .publicChannel && !currentDevice.canUsePublicChannel {
+        if channel == .publicChannel && !currentDeviceType.canUsePublicChannel {
             print("❌ [通讯] 发送失败：设备无法使用公共频道")
             return .failure(CommunicationError.channelRestricted)
         }
@@ -553,7 +559,7 @@ class CommunicationManager: ObservableObject {
     func canSendTo(channel: ChatChannel) -> Bool {
         switch channel {
         case .publicChannel:
-            return currentDevice.canUsePublicChannel
+            return currentDeviceType.canUsePublicChannel
         case .nearby:
             return LocationManager.shared.userLocation != nil
         case .territory, .trade:
@@ -565,7 +571,7 @@ class CommunicationManager: ObservableObject {
     func channelAvailabilityDescription(for channel: ChatChannel) -> String? {
         switch channel {
         case .publicChannel:
-            if !currentDevice.canUsePublicChannel {
+            if !currentDeviceType.canUsePublicChannel {
                 return "需要高级通讯设备"
             }
         case .nearby:
@@ -576,6 +582,127 @@ class CommunicationManager: ObservableObject {
             break
         }
         return nil
+    }
+
+    // MARK: - 设备管理（新版）
+
+    /// 加载用户设备
+    func loadDevices(userId: UUID) async {
+        isLoading = true
+        errorMessage = nil
+
+        do {
+            let response: [CommunicationDevice] = try await supabase
+                .from("communication_devices")
+                .select()
+                .eq("user_id", value: userId.uuidString)
+                .execute()
+                .value
+
+            devices = response
+            currentDevice = devices.first(where: { $0.isCurrent })
+
+            if devices.isEmpty {
+                await initializeDevices(userId: userId)
+            }
+        } catch {
+            errorMessage = "加载失败: \(error.localizedDescription)"
+        }
+
+        isLoading = false
+    }
+
+    /// 初始化用户设备
+    func initializeDevices(userId: UUID) async {
+        do {
+            try await supabase.rpc("initialize_user_devices", params: ["p_user_id": userId.uuidString]).execute()
+            await loadDevices(userId: userId)
+        } catch {
+            errorMessage = "初始化失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 切换当前设备
+    func switchDevice(userId: UUID, to deviceType: DeviceType) async {
+        guard let device = devices.first(where: { $0.deviceType == deviceType }), device.isUnlocked else {
+            errorMessage = "设备未解锁"
+            return
+        }
+
+        if device.isCurrent { return }
+
+        isLoading = true
+
+        do {
+            try await supabase.rpc("switch_current_device", params: [
+                "p_user_id": userId.uuidString,
+                "p_device_type": deviceType.rawValue
+            ]).execute()
+
+            for i in devices.indices {
+                devices[i].isCurrent = (devices[i].deviceType == deviceType)
+            }
+            currentDevice = devices.first(where: { $0.deviceType == deviceType })
+        } catch {
+            errorMessage = "切换失败: \(error.localizedDescription)"
+        }
+
+        isLoading = false
+    }
+
+    /// 解锁设备（由建造系统调用）
+    func unlockDevice(userId: UUID, deviceType: DeviceType) async {
+        do {
+            let updateData = DeviceUnlockUpdate(
+                isUnlocked: true,
+                updatedAt: ISO8601DateFormatter().string(from: Date())
+            )
+
+            try await supabase
+                .from("communication_devices")
+                .update(updateData)
+                .eq("user_id", value: userId.uuidString)
+                .eq("device_type", value: deviceType.rawValue)
+                .execute()
+
+            if let index = devices.firstIndex(where: { $0.deviceType == deviceType }) {
+                devices[index].isUnlocked = true
+            }
+        } catch {
+            errorMessage = "解锁失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 获取当前设备类型
+    func getCurrentDeviceType() -> DeviceType {
+        currentDevice?.deviceType ?? .walkieTalkie
+    }
+
+    /// 是否可以发送消息
+    func canSendMessage() -> Bool {
+        currentDevice?.deviceType.canSend ?? false
+    }
+
+    /// 获取当前通讯范围
+    func getCurrentRange() -> Double {
+        currentDevice?.deviceType.range ?? 3.0
+    }
+
+    /// 检查设备是否已解锁
+    func isDeviceUnlocked(_ deviceType: DeviceType) -> Bool {
+        devices.first(where: { $0.deviceType == deviceType })?.isUnlocked ?? false
+    }
+}
+
+// MARK: - 设备更新模型
+
+private struct DeviceUnlockUpdate: Encodable {
+    let isUnlocked: Bool
+    let updatedAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case isUnlocked = "is_unlocked"
+        case updatedAt = "updated_at"
     }
 }
 

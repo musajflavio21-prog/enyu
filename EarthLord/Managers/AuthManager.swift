@@ -37,6 +37,11 @@ class AuthManager: ObservableObject {
     /// 当前登录用户
     @Published var currentUser: User?
 
+    /// 当前用户ID（便捷访问，避免其他模块需要导入 Auth）
+    var currentUserId: UUID? {
+        currentUser?.id
+    }
+
     /// 是否正在加载
     @Published var isLoading: Bool = false
 

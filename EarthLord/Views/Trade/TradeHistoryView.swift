@@ -16,7 +16,7 @@ struct TradeHistoryView: View {
 
     /// 当前用户ID
     private var currentUserId: UUID? {
-        AuthManager.shared.currentUser?.id
+        AuthManager.shared.currentUserId
     }
 
     /// 是否显示评价弹窗
