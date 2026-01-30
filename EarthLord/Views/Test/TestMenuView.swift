@@ -129,6 +129,30 @@ struct TestMenuView: View {
                 .padding(.vertical, 8)
             }
             .listRowBackground(ApocalypseTheme.cardBackground)
+
+            #if DEBUG
+            // 距离过滤测试（Day 35-C）
+            NavigationLink(destination: DistanceFilterTestView()) {
+                HStack(spacing: 12) {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.system(size: 20))
+                        .foregroundColor(ApocalypseTheme.primary)
+                        .frame(width: 32)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("距离过滤测试")
+                            .font(.body)
+                            .foregroundColor(ApocalypseTheme.textPrimary)
+
+                        Text("模拟位置测试通讯距离过滤")
+                            .font(.caption)
+                            .foregroundColor(ApocalypseTheme.textSecondary)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            .listRowBackground(ApocalypseTheme.cardBackground)
+            #endif
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)

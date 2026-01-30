@@ -692,6 +692,567 @@ class CommunicationManager: ObservableObject {
     func isDeviceUnlocked(_ deviceType: DeviceType) -> Bool {
         devices.first(where: { $0.deviceType == deviceType })?.isUnlocked ?? false
     }
+
+    // MARK: - 频道相关属性（Day 33）
+
+    /// 所有公开频道
+    @Published var channels: [CommunicationChannel] = []
+
+    /// 我订阅的频道
+    @Published var subscribedChannels: [SubscribedChannel] = []
+
+    /// 我的订阅列表
+    @Published private(set) var mySubscriptions: [ChannelSubscription] = []
+
+    // MARK: - 频道消息属性（Day 34）
+
+    /// 频道消息（按频道ID分组）
+    @Published var channelMessages: [UUID: [ChannelMessage]] = [:]
+
+    /// 是否正在发送消息
+    @Published var isSendingMessage = false
+
+    /// 已订阅消息的频道ID集合（用于本地追踪哪些频道在监听消息）
+    @Published var subscribedChannelIds: Set<UUID> = []
+
+    /// 消息实时订阅频道
+    private var messageRealtimeChannel: RealtimeChannelV2?
+
+    /// 消息订阅任务
+    private var messageSubscriptionTask: Task<Void, Never>?
+
+    // MARK: - 频道方法（Day 33）
+
+    /// 加载公开频道
+    func loadPublicChannels() async {
+        print("🔄 [频道] 加载公开频道...")
+
+        do {
+            let response: [CommunicationChannel] = try await supabase
+                .from("communication_channels")
+                .select()
+                .eq("is_active", value: true)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+
+            channels = response
+            print("✅ [频道] 加载了 \(channels.count) 个公开频道")
+        } catch {
+            print("❌ [频道] 加载公开频道失败: \(error)")
+            errorMessage = "加载频道失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 加载已订阅频道
+    func loadSubscribedChannels(userId: UUID) async {
+        print("🔄 [频道] 加载用户订阅...")
+
+        do {
+            // 先加载订阅列表
+            let subscriptions: [ChannelSubscription] = try await supabase
+                .from("channel_subscriptions")
+                .select()
+                .eq("user_id", value: userId.uuidString)
+                .execute()
+                .value
+
+            mySubscriptions = subscriptions
+
+            if subscriptions.isEmpty {
+                subscribedChannels = []
+                print("ℹ️ [频道] 用户暂无订阅")
+                return
+            }
+
+            // 获取订阅的频道ID列表
+            let channelIds = subscriptions.map { $0.channelId.uuidString }
+
+            // 加载对应的频道信息
+            let channelsData: [CommunicationChannel] = try await supabase
+                .from("communication_channels")
+                .select()
+                .in("id", values: channelIds)
+                .eq("is_active", value: true)
+                .execute()
+                .value
+
+            // 组合订阅和频道信息
+            var combined: [SubscribedChannel] = []
+            for channel in channelsData {
+                if let subscription = subscriptions.first(where: { $0.channelId == channel.id }) {
+                    combined.append(SubscribedChannel(channel: channel, subscription: subscription))
+                }
+            }
+
+            subscribedChannels = combined
+            print("✅ [频道] 加载了 \(subscribedChannels.count) 个已订阅频道")
+        } catch {
+            print("❌ [频道] 加载订阅失败: \(error)")
+            errorMessage = "加载订阅失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 创建频道
+    func createChannel(
+        userId: UUID,
+        type: ChannelType,
+        name: String,
+        description: String?,
+        latitude: Double? = nil,
+        longitude: Double? = nil
+    ) async -> Result<UUID, Error> {
+        print("🔄 [频道] 创建频道: \(name)")
+
+        do {
+            // 构建 RPC 参数
+            var params: [String: AnyJSON] = [
+                "p_creator_id": .string(userId.uuidString),
+                "p_channel_type": .string(type.rawValue),
+                "p_name": .string(name)
+            ]
+
+            if let desc = description, !desc.isEmpty {
+                params["p_description"] = .string(desc)
+            } else {
+                params["p_description"] = .null
+            }
+
+            if let lat = latitude, let lng = longitude {
+                params["p_latitude"] = .double(lat)
+                params["p_longitude"] = .double(lng)
+            } else {
+                params["p_latitude"] = .null
+                params["p_longitude"] = .null
+            }
+
+            // 调用 RPC 函数
+            let response: String = try await supabase
+                .rpc("create_channel_with_subscription", params: params)
+                .execute()
+                .value
+
+            // 解析返回的 UUID
+            guard let channelId = UUID(uuidString: response.trimmingCharacters(in: CharacterSet(charactersIn: "\""))) else {
+                print("❌ [频道] 无法解析频道ID: \(response)")
+                return .failure(CommunicationError.databaseError("无法解析频道ID"))
+            }
+
+            print("✅ [频道] 频道创建成功: \(channelId)")
+
+            // 刷新频道列表
+            await loadPublicChannels()
+            await loadSubscribedChannels(userId: userId)
+
+            return .success(channelId)
+        } catch {
+            print("❌ [频道] 创建频道失败: \(error)")
+            return .failure(CommunicationError.databaseError(error.localizedDescription))
+        }
+    }
+
+    /// 订阅频道
+    func subscribeToChannel(userId: UUID, channelId: UUID) async -> Result<Void, Error> {
+        print("🔄 [频道] 订阅频道: \(channelId)")
+
+        do {
+            let subscription = NewChannelSubscription(
+                userId: userId.uuidString,
+                channelId: channelId.uuidString
+            )
+
+            try await supabase
+                .from("channel_subscriptions")
+                .insert(subscription)
+                .execute()
+
+            // 更新频道成员数
+            if let channel = channels.first(where: { $0.id == channelId }) {
+                try await supabase
+                    .from("communication_channels")
+                    .update(["member_count": channel.memberCount + 1])
+                    .eq("id", value: channelId.uuidString)
+                    .execute()
+            }
+
+            print("✅ [频道] 订阅成功")
+
+            // 刷新数据
+            await loadPublicChannels()
+            await loadSubscribedChannels(userId: userId)
+
+            return .success(())
+        } catch {
+            print("❌ [频道] 订阅失败: \(error)")
+            return .failure(CommunicationError.databaseError(error.localizedDescription))
+        }
+    }
+
+    /// 取消订阅
+    func unsubscribeFromChannel(userId: UUID, channelId: UUID) async -> Result<Void, Error> {
+        print("🔄 [频道] 取消订阅: \(channelId)")
+
+        do {
+            try await supabase
+                .from("channel_subscriptions")
+                .delete()
+                .eq("user_id", value: userId.uuidString)
+                .eq("channel_id", value: channelId.uuidString)
+                .execute()
+
+            // 更新频道成员数
+            if let channel = channels.first(where: { $0.id == channelId }), channel.memberCount > 0 {
+                try await supabase
+                    .from("communication_channels")
+                    .update(["member_count": channel.memberCount - 1])
+                    .eq("id", value: channelId.uuidString)
+                    .execute()
+            }
+
+            print("✅ [频道] 取消订阅成功")
+
+            // 刷新数据
+            await loadPublicChannels()
+            await loadSubscribedChannels(userId: userId)
+
+            return .success(())
+        } catch {
+            print("❌ [频道] 取消订阅失败: \(error)")
+            return .failure(CommunicationError.databaseError(error.localizedDescription))
+        }
+    }
+
+    /// 检查是否已订阅
+    func isSubscribed(channelId: UUID) -> Bool {
+        mySubscriptions.contains(where: { $0.channelId == channelId })
+    }
+
+    /// 删除频道
+    func deleteChannel(channelId: UUID) async -> Result<Void, Error> {
+        print("🔄 [频道] 删除频道: \(channelId)")
+
+        do {
+            try await supabase
+                .from("communication_channels")
+                .delete()
+                .eq("id", value: channelId.uuidString)
+                .execute()
+
+            print("✅ [频道] 频道删除成功")
+
+            // 从本地列表移除
+            channels.removeAll { $0.id == channelId }
+            subscribedChannels.removeAll { $0.channel.id == channelId }
+
+            return .success(())
+        } catch {
+            print("❌ [频道] 删除频道失败: \(error)")
+            return .failure(CommunicationError.databaseError(error.localizedDescription))
+        }
+    }
+
+    // MARK: - 频道消息管理（Day 34）
+
+    /// 加载频道历史消息
+    /// - Parameters:
+    ///   - channelId: 频道ID
+    ///   - limit: 加载数量（默认50）
+    func loadChannelMessages(channelId: UUID, limit: Int = 50) async {
+        print("🔄 [消息] 加载频道消息: \(channelId)")
+
+        do {
+            let response: [ChannelMessage] = try await supabase
+                .from("channel_messages")
+                .select()
+                .eq("channel_id", value: channelId.uuidString)
+                .order("created_at", ascending: false)
+                .limit(limit)
+                .execute()
+                .value
+
+            // Day 35: 历史消息也应用距离过滤
+            var filteredMessages = response
+            if let channel = channels.first(where: { $0.id == channelId })
+               ?? subscribedChannels.first(where: { $0.channel.id == channelId })?.channel {
+                filteredMessages = response.filter { shouldReceiveMessage($0, in: channel) }
+                if filteredMessages.count < response.count {
+                    print("📡 [消息] 距离过滤：\(response.count) -> \(filteredMessages.count) 条消息")
+                }
+            }
+
+            // 反转顺序（最新的在最后）
+            channelMessages[channelId] = filteredMessages.reversed()
+            print("✅ [消息] 加载了 \(filteredMessages.count) 条消息")
+        } catch {
+            print("❌ [消息] 加载消息失败: \(error)")
+            errorMessage = "加载消息失败: \(error.localizedDescription)"
+        }
+    }
+
+    /// 发送频道消息
+    /// - Parameters:
+    ///   - channelId: 频道ID
+    ///   - content: 消息内容
+    ///   - latitude: 纬度（可选）
+    ///   - longitude: 经度（可选）
+    /// - Returns: 是否发送成功
+    func sendChannelMessage(
+        channelId: UUID,
+        content: String,
+        latitude: Double? = nil,
+        longitude: Double? = nil
+    ) async -> Bool {
+        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            print("⚠️ [消息] 消息内容为空")
+            return false
+        }
+
+        isSendingMessage = true
+        defer { isSendingMessage = false }
+
+        // 获取当前设备类型
+        let deviceType = currentDevice?.deviceType.rawValue ?? "unknown"
+
+        do {
+            // 构建 RPC 参数
+            var params: [String: AnyJSON] = [
+                "p_channel_id": .string(channelId.uuidString),
+                "p_content": .string(content),
+                "p_device_type": .string(deviceType)
+            ]
+
+            if let lat = latitude, let lng = longitude {
+                params["p_latitude"] = .double(lat)
+                params["p_longitude"] = .double(lng)
+            } else {
+                params["p_latitude"] = .null
+                params["p_longitude"] = .null
+            }
+
+            // 调用 RPC 函数
+            let _: String = try await supabase
+                .rpc("send_channel_message", params: params)
+                .execute()
+                .value
+
+            print("✅ [消息] 消息发送成功")
+            return true
+        } catch {
+            print("❌ [消息] 发送消息失败: \(error)")
+            errorMessage = "发送失败: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    /// 启动 Realtime 消息订阅
+    func startMessageRealtimeSubscription() async {
+        // 如果已经有订阅，先停止
+        await stopMessageRealtimeSubscription()
+
+        print("🔄 [消息] 启动 Realtime 消息订阅...")
+
+        do {
+            // 创建实时频道
+            messageRealtimeChannel = supabase.realtimeV2.channel("channel_messages_realtime")
+
+            // 订阅消息插入事件
+            let insertions = messageRealtimeChannel!.postgresChange(
+                InsertAction.self,
+                schema: "public",
+                table: "channel_messages"
+            )
+
+            // 启动频道
+            await messageRealtimeChannel!.subscribe()
+
+            print("✅ [消息] Realtime 消息订阅已启动")
+
+            // 监听新消息
+            messageSubscriptionTask = Task {
+                for await insertion in insertions {
+                    await handleChannelMessage(insertion: insertion)
+                }
+            }
+        } catch {
+            print("❌ [消息] 启动 Realtime 订阅失败: \(error)")
+            errorMessage = "实时消息订阅失败"
+        }
+    }
+
+    /// 停止 Realtime 订阅
+    func stopMessageRealtimeSubscription() async {
+        print("🔄 [消息] 停止 Realtime 消息订阅...")
+
+        messageSubscriptionTask?.cancel()
+        messageSubscriptionTask = nil
+
+        if let channel = messageRealtimeChannel {
+            await channel.unsubscribe()
+            messageRealtimeChannel = nil
+        }
+
+        print("✅ [消息] Realtime 消息订阅已停止")
+    }
+
+    /// 处理新消息
+    private func handleChannelMessage(insertion: InsertAction) async {
+        do {
+            let message = try insertion.decodeRecord(as: ChannelMessage.self, decoder: JSONDecoder())
+
+            // 只处理已订阅的频道消息
+            guard subscribedChannelIds.contains(message.channelId) else {
+                return
+            }
+
+            // Day 35: 距离过滤
+            if let channel = channels.first(where: { $0.id == message.channelId })
+               ?? subscribedChannels.first(where: { $0.channel.id == message.channelId })?.channel {
+                if !shouldReceiveMessage(message, in: channel) {
+                    print("📡 [消息] 距离过远，已过滤")
+                    return
+                }
+            }
+
+            // 避免重复
+            if let existingMessages = channelMessages[message.channelId],
+               existingMessages.contains(where: { $0.messageId == message.messageId }) {
+                return
+            }
+
+            // 添加到消息列表
+            if channelMessages[message.channelId] == nil {
+                channelMessages[message.channelId] = []
+            }
+            channelMessages[message.channelId]?.append(message)
+
+            print("📩 [消息] 收到新消息: \(message.content.prefix(20))...")
+        } catch {
+            print("❌ [消息] 解析新消息失败: \(error)")
+        }
+    }
+
+    /// 订阅频道消息（本地追踪）
+    /// - Parameter channelId: 频道ID
+    func subscribeToChannelMessages(channelId: UUID) {
+        subscribedChannelIds.insert(channelId)
+        print("✅ [消息] 开始追踪频道消息: \(channelId)")
+    }
+
+    /// 取消订阅频道消息（本地追踪）
+    /// - Parameter channelId: 频道ID
+    func unsubscribeFromChannelMessages(channelId: UUID) {
+        subscribedChannelIds.remove(channelId)
+        print("✅ [消息] 停止追踪频道消息: \(channelId)")
+    }
+
+    /// 获取频道消息列表
+    /// - Parameter channelId: 频道ID
+    /// - Returns: 消息列表
+    func getMessages(for channelId: UUID) -> [ChannelMessage] {
+        channelMessages[channelId] ?? []
+    }
+
+    /// 清除频道消息缓存
+    /// - Parameter channelId: 频道ID
+    func clearMessages(for channelId: UUID) {
+        channelMessages.removeValue(forKey: channelId)
+    }
+
+    // MARK: - 距离过滤算法（Day 35）
+
+    /// 计算两个设备类型之间的最大通讯距离（公里）
+    private func maxCommunicationDistance(senderDevice: DeviceType, receiverDevice: DeviceType) -> Double {
+        // 收音机接收方：无距离限制
+        if receiverDevice == .radio {
+            return Double.infinity
+        }
+        // 收音机发送方：不能发送
+        if senderDevice == .radio {
+            return 0
+        }
+
+        switch (senderDevice, receiverDevice) {
+        case (.walkieTalkie, .walkieTalkie):
+            return 3.0
+        case (.walkieTalkie, .campRadio), (.campRadio, .walkieTalkie):
+            return 30.0
+        case (.walkieTalkie, .satellite), (.satellite, .walkieTalkie):
+            return 100.0
+        case (.campRadio, .campRadio):
+            return 30.0
+        case (.campRadio, .satellite), (.satellite, .campRadio):
+            return 100.0
+        case (.satellite, .satellite):
+            return 100.0
+        default:
+            return Double.infinity  // 保守策略
+        }
+    }
+
+    /// 计算两点之间的距离（公里）
+    private func calculateDistance(from: LocationPoint, to: CLLocationCoordinate2D) -> Double {
+        let fromLocation = CLLocation(latitude: from.latitude, longitude: from.longitude)
+        let toLocation = CLLocation(latitude: to.latitude, longitude: to.longitude)
+        return fromLocation.distance(from: toLocation) / 1000.0
+    }
+
+    /// 获取当前位置（Day 35-A 返回假数据，Day 35-B 替换为真实 GPS）
+    private func getCurrentLocation() -> CLLocationCoordinate2D? {
+        #if DEBUG
+        // Day 35-C: 调试模式优先使用模拟位置
+        return LocationManager.shared.effectiveLocation
+        #else
+        return LocationManager.shared.userLocation
+        #endif
+    }
+
+    /// 判断是否应该接收消息
+    func shouldReceiveMessage(_ message: ChannelMessage, in channel: CommunicationChannel) -> Bool {
+        // 1. 官方频道不过滤
+        if !channel.channelType.requiresDistanceFilter {
+            print("📡 [距离过滤] \(channel.name) 无需过滤")
+            return true
+        }
+
+        // 2. 保守策略：无设备信息时允许
+        guard let receiverDevice = currentDevice else {
+            print("📡 [距离过滤] 无接收设备，保守允许")
+            return true
+        }
+
+        // 3. 收音机接收所有消息
+        if receiverDevice.deviceType == .radio {
+            print("📻 [距离过滤] 收音机用户，接收所有消息")
+            return true
+        }
+
+        // 4. 保守策略：发送者位置缺失时允许
+        guard let senderLocation = message.senderLocation else {
+            print("📡 [距离过滤] 发送者位置缺失，保守允许")
+            return true
+        }
+
+        // 5. 保守策略：接收者位置缺失时允许
+        guard let receiverLocation = getCurrentLocation() else {
+            print("📡 [距离过滤] 接收者位置缺失，保守允许")
+            return true
+        }
+
+        // 6. 保守策略：发送者设备类型缺失时允许
+        guard let senderDevice = message.senderDeviceType else {
+            print("📡 [距离过滤] 发送者设备类型缺失，保守允许")
+            return true
+        }
+
+        // 7. 计算距离
+        let distance = calculateDistance(from: senderLocation, to: receiverLocation)
+        let maxDistance = maxCommunicationDistance(senderDevice: senderDevice, receiverDevice: receiverDevice.deviceType)
+        let isInRange = distance <= maxDistance
+
+        print("📡 [距离过滤] \(senderDevice.rawValue)→\(receiverDevice.deviceType.rawValue) 距离:\(String(format: "%.1f", distance))km 最大:\(maxDistance == .infinity ? "∞" : String(format: "%.0f", maxDistance))km \(isInRange ? "✅" : "❌")")
+
+        return isInRange
+    }
 }
 
 // MARK: - 设备更新模型
@@ -703,6 +1264,18 @@ private struct DeviceUnlockUpdate: Encodable {
     enum CodingKeys: String, CodingKey {
         case isUnlocked = "is_unlocked"
         case updatedAt = "updated_at"
+    }
+}
+
+// MARK: - 频道订阅模型（Day 33）
+
+private struct NewChannelSubscription: Encodable {
+    let userId: String
+    let channelId: String
+
+    enum CodingKeys: String, CodingKey {
+        case userId = "user_id"
+        case channelId = "channel_id"
     }
 }
 

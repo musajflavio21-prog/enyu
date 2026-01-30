@@ -372,7 +372,7 @@ enum DeviceType: String, Codable, CaseIterable {
     var iconName: String {
         switch self {
         case .radio: return "radio"
-        case .walkieTalkie: return "walkie.talkie.radio"
+        case .walkieTalkie: return "phone.fill"
         case .campRadio: return "antenna.radiowaves.left.and.right"
         case .satellite: return "antenna.radiowaves.left.and.right.circle"
         }
@@ -459,5 +459,292 @@ enum CommunicationSection: String, CaseIterable {
         case .call: return "phone.fill"
         case .devices: return "gearshape.fill"
         }
+    }
+}
+
+// MARK: - 频道类型（Day 33）
+
+/// 频道类型枚举
+enum ChannelType: String, Codable, CaseIterable {
+    case official = "official"
+    case publicChannel = "public"
+    case walkie = "walkie"
+    case camp = "camp"
+    case satellite = "satellite"
+
+    var displayName: String {
+        switch self {
+        case .official: return "官方频道"
+        case .publicChannel: return "公开频道"
+        case .walkie: return "对讲频道"
+        case .camp: return "营地频道"
+        case .satellite: return "卫星频道"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .official: return "star.circle.fill"
+        case .publicChannel: return "globe"
+        case .walkie: return "phone.fill"
+        case .camp: return "tent.fill"
+        case .satellite: return "antenna.radiowaves.left.and.right.circle"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .official: return "官方公告和活动信息"
+        case .publicChannel: return "所有人都可加入的公开频道"
+        case .walkie: return "短距离对讲，范围3公里"
+        case .camp: return "营地内部通讯"
+        case .satellite: return "远距离卫星通讯"
+        }
+    }
+
+    /// 用户可创建的频道类型（排除 official）
+    static var creatableTypes: [ChannelType] {
+        [.publicChannel, .walkie, .camp, .satellite]
+    }
+
+    /// 是否需要距离过滤（官方频道不需要）
+    var requiresDistanceFilter: Bool {
+        switch self {
+        case .official:
+            return false  // 官方公告无距离限制
+        case .publicChannel, .walkie, .camp, .satellite:
+            return true   // 其他频道需要距离过滤
+        }
+    }
+}
+
+// MARK: - 通讯频道
+
+struct CommunicationChannel: Codable, Identifiable, Hashable {
+    let id: UUID
+    let creatorId: UUID
+    let channelType: ChannelType
+    let channelCode: String
+    let name: String
+    let description: String?
+    let isActive: Bool
+    let memberCount: Int
+    let createdAt: Date
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case creatorId = "creator_id"
+        case channelType = "channel_type"
+        case channelCode = "channel_code"
+        case name
+        case description
+        case isActive = "is_active"
+        case memberCount = "member_count"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func == (lhs: CommunicationChannel, rhs: CommunicationChannel) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+// MARK: - 频道订阅
+
+struct ChannelSubscription: Codable, Identifiable {
+    let id: UUID
+    let userId: UUID
+    let channelId: UUID
+    var isMuted: Bool
+    let joinedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case channelId = "channel_id"
+        case isMuted = "is_muted"
+        case joinedAt = "joined_at"
+    }
+}
+
+// MARK: - 已订阅频道（组合）
+
+struct SubscribedChannel: Identifiable {
+    let channel: CommunicationChannel
+    let subscription: ChannelSubscription
+
+    var id: UUID { channel.id }
+}
+
+// MARK: - 位置点模型（用于解析 PostGIS POINT）
+
+struct LocationPoint: Codable {
+    let latitude: Double
+    let longitude: Double
+
+    static func fromPostGIS(_ wkt: String) -> LocationPoint? {
+        let pattern = #"POINT\(([0-9.-]+)\s+([0-9.-]+)\)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: wkt, range: NSRange(wkt.startIndex..., in: wkt)),
+              let lonRange = Range(match.range(at: 1), in: wkt),
+              let latRange = Range(match.range(at: 2), in: wkt),
+              let longitude = Double(wkt[lonRange]),
+              let latitude = Double(wkt[latRange]) else {
+            return nil
+        }
+        return LocationPoint(latitude: latitude, longitude: longitude)
+    }
+}
+
+// MARK: - 频道消息元数据
+
+struct ChannelMessageMetadata: Codable {
+    let deviceType: String?
+
+    enum CodingKeys: String, CodingKey {
+        case deviceType = "device_type"
+    }
+}
+
+// MARK: - 频道消息模型
+
+struct ChannelMessage: Codable, Identifiable {
+    let messageId: UUID
+    let channelId: UUID
+    let senderId: UUID?
+    let senderCallsign: String?
+    let content: String
+    let senderLocation: LocationPoint?
+    let metadata: ChannelMessageMetadata?
+    let createdAt: Date
+
+    var id: UUID { messageId }
+
+    enum CodingKeys: String, CodingKey {
+        case messageId = "message_id"
+        case channelId = "channel_id"
+        case senderId = "sender_id"
+        case senderCallsign = "sender_callsign"
+        case content
+        case senderLocation = "sender_location"
+        case metadata
+        case createdAt = "created_at"
+    }
+
+    // 自定义解码（处理 PostGIS POINT 格式 + 多种日期格式）
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        messageId = try container.decode(UUID.self, forKey: .messageId)
+        channelId = try container.decode(UUID.self, forKey: .channelId)
+        senderId = try container.decodeIfPresent(UUID.self, forKey: .senderId)
+        senderCallsign = try container.decodeIfPresent(String.self, forKey: .senderCallsign)
+        content = try container.decode(String.self, forKey: .content)
+        metadata = try container.decodeIfPresent(ChannelMessageMetadata.self, forKey: .metadata)
+
+        // 解析 PostGIS POINT 格式的位置
+        if let locationString = try container.decodeIfPresent(String.self, forKey: .senderLocation) {
+            senderLocation = LocationPoint.fromPostGIS(locationString)
+        } else {
+            senderLocation = nil
+        }
+
+        // 多格式日期解析
+        if let dateString = try? container.decode(String.self, forKey: .createdAt) {
+            if let date = ChannelMessage.parseDate(dateString) {
+                createdAt = date
+            } else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .createdAt,
+                    in: container,
+                    debugDescription: "无法解析日期: \(dateString)"
+                )
+            }
+        } else {
+            createdAt = try container.decode(Date.self, forKey: .createdAt)
+        }
+    }
+
+    // 日期解析辅助方法
+    private static func parseDate(_ string: String) -> Date? {
+        // ISO8601 格式
+        let iso8601 = ISO8601DateFormatter()
+        iso8601.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso8601.date(from: string) {
+            return date
+        }
+
+        // 不带毫秒的 ISO8601
+        iso8601.formatOptions = [.withInternetDateTime]
+        if let date = iso8601.date(from: string) {
+            return date
+        }
+
+        // 自定义格式
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+
+        let formats = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ",
+            "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+            "yyyy-MM-dd'T'HH:mm:ssZ",
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS+00:00",
+            "yyyy-MM-dd'T'HH:mm:ss+00:00"
+        ]
+
+        for format in formats {
+            dateFormatter.dateFormat = format
+            if let date = dateFormatter.date(from: string) {
+                return date
+            }
+        }
+
+        return nil
+    }
+
+    // 显示用计算属性：相对时间
+    var timeAgo: String {
+        let calendar = Calendar.current
+        let now = Date()
+        let components = calendar.dateComponents([.minute, .hour, .day], from: createdAt, to: now)
+
+        if let day = components.day, day > 0 {
+            if day == 1 {
+                return "昨天"
+            } else if day < 7 {
+                return "\(day)天前"
+            } else {
+                let formatter = DateFormatter()
+                formatter.dateFormat = "MM-dd"
+                return formatter.string(from: createdAt)
+            }
+        } else if let hour = components.hour, hour > 0 {
+            return "\(hour)小时前"
+        } else if let minute = components.minute, minute > 0 {
+            return "\(minute)分钟前"
+        } else {
+            return "刚刚"
+        }
+    }
+
+    // 格式化时间（HH:mm）
+    var formattedTime: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: createdAt)
+    }
+
+    // 设备类型
+    var deviceType: String? { metadata?.deviceType }
+
+    /// 发送者设备类型（解析自 metadata）
+    var senderDeviceType: DeviceType? {
+        guard let deviceTypeString = metadata?.deviceType else { return nil }
+        return DeviceType(rawValue: deviceTypeString)
     }
 }

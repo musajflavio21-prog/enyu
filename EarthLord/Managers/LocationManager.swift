@@ -33,6 +33,75 @@ class LocationManager: NSObject, ObservableObject {
     /// 是否正在定位
     @Published var isUpdatingLocation = false
 
+    // MARK: - 模拟位置支持（Day 35-C）
+    #if DEBUG
+    /// 是否启用模拟位置
+    @Published var mockLocationEnabled = false
+
+    /// 模拟位置坐标
+    @Published var mockLocation: CLLocationCoordinate2D?
+
+    /// 预设模拟位置
+    enum MockLocationPreset: String, CaseIterable {
+        case beijing = "北京"           // 39.9042, 116.4074
+        case shanghai = "上海"          // 31.2304, 121.4737
+        case shenzhen = "深圳"          // 22.5431, 114.0579
+        case nearby1km = "附近1公里"     // 相对当前位置偏移
+        case nearby5km = "附近5公里"
+        case nearby50km = "附近50公里"
+        case nearby150km = "附近150公里"
+
+        func coordinate(relativeTo base: CLLocationCoordinate2D? = nil) -> CLLocationCoordinate2D {
+            switch self {
+            case .beijing: return CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)
+            case .shanghai: return CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
+            case .shenzhen: return CLLocationCoordinate2D(latitude: 22.5431, longitude: 114.0579)
+            case .nearby1km:
+                let base = base ?? CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)
+                return CLLocationCoordinate2D(latitude: base.latitude + 0.009, longitude: base.longitude)
+            case .nearby5km:
+                let base = base ?? CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)
+                return CLLocationCoordinate2D(latitude: base.latitude + 0.045, longitude: base.longitude)
+            case .nearby50km:
+                let base = base ?? CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)
+                return CLLocationCoordinate2D(latitude: base.latitude + 0.45, longitude: base.longitude)
+            case .nearby150km:
+                let base = base ?? CLLocationCoordinate2D(latitude: 39.9042, longitude: 116.4074)
+                return CLLocationCoordinate2D(latitude: base.latitude + 1.35, longitude: base.longitude)
+            }
+        }
+    }
+
+    /// 设置模拟位置
+    func setMockLocation(_ preset: MockLocationPreset) {
+        mockLocation = preset.coordinate(relativeTo: userLocation)
+        mockLocationEnabled = true
+        print("🎯 [模拟位置] 设置为: \(preset.rawValue) (\(mockLocation!.latitude), \(mockLocation!.longitude))")
+    }
+
+    /// 设置自定义模拟位置
+    func setMockLocation(latitude: Double, longitude: Double) {
+        mockLocation = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+        mockLocationEnabled = true
+        print("🎯 [模拟位置] 自定义: (\(latitude), \(longitude))")
+    }
+
+    /// 清除模拟位置
+    func clearMockLocation() {
+        mockLocationEnabled = false
+        mockLocation = nil
+        print("🎯 [模拟位置] 已清除")
+    }
+
+    /// 获取有效位置（优先返回模拟位置）
+    var effectiveLocation: CLLocationCoordinate2D? {
+        if mockLocationEnabled, let mock = mockLocation {
+            return mock
+        }
+        return userLocation
+    }
+    #endif
+
     // MARK: - 路径追踪属性
 
     /// 是否正在追踪路径（圈地模式）
