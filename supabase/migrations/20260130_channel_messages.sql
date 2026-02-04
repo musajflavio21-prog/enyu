@@ -52,18 +52,19 @@ CREATE INDEX IF NOT EXISTS idx_messages_created ON public.channel_messages(creat
 ALTER PUBLICATION supabase_realtime ADD TABLE channel_messages;
 
 -- 7. 创建发送消息 RPC 函数
+-- 修复：移除对 user_presence 表的依赖，改为由客户端传入呼号参数
 CREATE OR REPLACE FUNCTION send_channel_message(
     p_channel_id UUID,
     p_content TEXT,
     p_latitude DOUBLE PRECISION DEFAULT NULL,
     p_longitude DOUBLE PRECISION DEFAULT NULL,
-    p_device_type TEXT DEFAULT NULL
+    p_device_type TEXT DEFAULT NULL,
+    p_callsign TEXT DEFAULT '匿名幸存者'
 )
 RETURNS UUID AS $$
 DECLARE
     v_message_id UUID;
     v_sender_id UUID;
-    v_callsign TEXT;
     v_location GEOGRAPHY(POINT, 4326);
     v_metadata JSONB;
 BEGIN
@@ -75,16 +76,6 @@ BEGIN
         WHERE channel_id = p_channel_id AND user_id = v_sender_id
     ) THEN
         RAISE EXCEPTION '您未订阅此频道，无法发送消息';
-    END IF;
-
-    -- 获取用户呼号
-    SELECT COALESCE(username, '匿名幸存者')
-    INTO v_callsign
-    FROM public.user_presence
-    WHERE user_id = v_sender_id;
-
-    IF v_callsign IS NULL THEN
-        v_callsign := '匿名幸存者';
     END IF;
 
     -- 构建位置
@@ -100,7 +91,7 @@ BEGIN
         channel_id, sender_id, sender_callsign, content, sender_location, metadata
     )
     VALUES (
-        p_channel_id, v_sender_id, v_callsign, p_content, v_location, v_metadata
+        p_channel_id, v_sender_id, p_callsign, p_content, v_location, v_metadata
     )
     RETURNING message_id INTO v_message_id;
 

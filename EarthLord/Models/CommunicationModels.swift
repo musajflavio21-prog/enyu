@@ -605,9 +605,85 @@ struct LocationPoint: Codable {
 
 struct ChannelMessageMetadata: Codable {
     let deviceType: String?
+    let category: String?  // Day 36: 消息分类（用于官方频道）
 
     enum CodingKeys: String, CodingKey {
         case deviceType = "device_type"
+        case category
+    }
+}
+
+// MARK: - 消息分类（Day 36）
+
+/// 官方频道消息分类
+enum MessageCategory: String, CaseIterable {
+    case survival = "survival"     // 生存指南
+    case news = "news"             // 末日新闻
+    case mission = "mission"       // 任务发布
+    case alert = "alert"           // 紧急警报
+
+    var displayName: String {
+        switch self {
+        case .survival: return "生存指南"
+        case .news: return "末日新闻"
+        case .mission: return "任务发布"
+        case .alert: return "紧急警报"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .survival: return "heart.text.square"
+        case .news: return "newspaper"
+        case .mission: return "flag.fill"
+        case .alert: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    var color: String {
+        switch self {
+        case .survival: return "green"
+        case .news: return "blue"
+        case .mission: return "orange"
+        case .alert: return "red"
+        }
+    }
+}
+
+// MARK: - 频道摘要（Day 36）
+
+/// 频道摘要信息（用于消息中心列表）
+struct ChannelSummary: Identifiable {
+    let channel: CommunicationChannel
+    let latestMessage: ChannelMessage?
+    let unreadCount: Int
+
+    var id: UUID { channel.id }
+}
+
+// MARK: - 用户资料（Day 36）
+
+/// 用户资料（用于呼号功能）
+struct UserProfile: Codable, Identifiable {
+    let id: UUID
+    let username: String?
+    let callsign: String?
+    let createdAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case username
+        case callsign
+        case createdAt = "created_at"
+    }
+}
+
+/// 呼号更新请求
+struct CallsignUpdate: Codable {
+    let callsign: String?
+
+    enum CodingKeys: String, CodingKey {
+        case callsign
     }
 }
 

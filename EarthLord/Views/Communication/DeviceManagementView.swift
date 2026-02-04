@@ -14,6 +14,7 @@ struct DeviceManagementView: View {
     @EnvironmentObject var authManager: AuthManager
     @State private var showUnlockAlert = false
     @State private var selectedDeviceForUnlock: DeviceType?
+    @State private var showCallsignSettings = false
 
     var body: some View {
         ScrollView {
@@ -28,6 +29,9 @@ struct DeviceManagementView: View {
                         .foregroundColor(ApocalypseTheme.textSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                // 呼号设置卡片（Day 36）
+                callsignSettingsCard
 
                 // 当前设备卡片
                 if let current = communicationManager.currentDevice {
@@ -48,6 +52,16 @@ struct DeviceManagementView: View {
             .padding(16)
         }
         .background(ApocalypseTheme.background)
+        .task {
+            // Day 36: 加载用户呼号
+            if let userId = authManager.currentUserId {
+                await communicationManager.loadUserCallsign(userId: userId)
+            }
+        }
+        .sheet(isPresented: $showCallsignSettings) {
+            CallsignSettingsSheet()
+                .environmentObject(authManager)
+        }
         .alert("设备未解锁", isPresented: $showUnlockAlert) {
             Button("确定", role: .cancel) {}
         } message: {
@@ -55,6 +69,46 @@ struct DeviceManagementView: View {
                 Text(device.unlockRequirement)
             }
         }
+    }
+
+    // MARK: - 呼号设置卡片（Day 36）
+
+    private var callsignSettingsCard: some View {
+        Button {
+            showCallsignSettings = true
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(ApocalypseTheme.primary.opacity(0.2))
+                        .frame(width: 50, height: 50)
+                    Image(systemName: "person.text.rectangle")
+                        .font(.system(size: 22))
+                        .foregroundColor(ApocalypseTheme.primary)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("我的呼号")
+                        .font(.subheadline).fontWeight(.medium)
+                        .foregroundColor(ApocalypseTheme.textPrimary)
+
+                    Text(communicationManager.getCurrentCallsign())
+                        .font(.caption)
+                        .fontDesign(.monospaced)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(ApocalypseTheme.textSecondary)
+            }
+            .padding(12)
+            .background(ApocalypseTheme.cardBackground)
+            .cornerRadius(10)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 
     // MARK: - 当前设备大卡片

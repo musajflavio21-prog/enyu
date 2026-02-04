@@ -18,11 +18,15 @@ struct ChannelCenterView: View {
     @State private var showCreateSheet = false
     @State private var selectedChannel: CommunicationChannel?
     @State private var chatChannel: CommunicationChannel?
+    @State private var showOfficialChannel = false
 
     var body: some View {
         VStack(spacing: 0) {
             // 标题栏
             headerView
+
+            // 官方频道入口（置顶）
+            officialChannelEntry
 
             // Tab 选择器
             tabSelector
@@ -47,6 +51,10 @@ struct ChannelCenterView: View {
         }
         .sheet(item: $selectedChannel) { channel in
             ChannelDetailView(channel: channel)
+                .environmentObject(authManager)
+        }
+        .fullScreenCover(isPresented: $showOfficialChannel) {
+            OfficialChannelDetailView()
                 .environmentObject(authManager)
         }
         .fullScreenCover(item: $chatChannel) { channel in
@@ -104,6 +112,64 @@ struct ChannelCenterView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 12)
+    }
+
+    // MARK: - 官方频道入口（Day 36）
+
+    private var officialChannelEntry: some View {
+        Button {
+            showOfficialChannel = true
+        } label: {
+            HStack(spacing: 12) {
+                // 图标
+                ZStack {
+                    Circle()
+                        .fill(ApocalypseTheme.warning.opacity(0.2))
+                        .frame(width: 48, height: 48)
+
+                    Image(systemName: "megaphone.fill")
+                        .font(.title3)
+                        .foregroundColor(ApocalypseTheme.warning)
+                }
+
+                // 频道信息
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("末日广播站")
+                            .font(.headline)
+                            .foregroundColor(ApocalypseTheme.textPrimary)
+
+                        Text("官方")
+                            .font(.caption2)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(ApocalypseTheme.warning)
+                            .cornerRadius(4)
+                    }
+
+                    Text("官方公告、生存指南、任务发布")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(ApocalypseTheme.textSecondary)
+            }
+            .padding()
+            .background(ApocalypseTheme.cardBackground)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(ApocalypseTheme.warning.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal)
+        .padding(.bottom, 8)
     }
 
     // MARK: - Tab 选择器
@@ -315,7 +381,7 @@ struct ChannelCenterView: View {
 
     private func loadData() async {
         await communicationManager.loadPublicChannels()
-        if let userId = authManager.currentUser?.id {
+        if let userId = authManager.currentUserId {
             await communicationManager.loadSubscribedChannels(userId: userId)
         }
     }

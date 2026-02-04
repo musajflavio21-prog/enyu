@@ -22,7 +22,7 @@ struct ChannelChatView: View {
     @FocusState private var isInputFocused: Bool
 
     private var currentUserId: UUID? {
-        authManager.currentUser?.id
+        authManager.currentUserId
     }
 
     private var canSend: Bool {

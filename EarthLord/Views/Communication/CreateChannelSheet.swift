@@ -258,7 +258,7 @@ struct CreateChannelSheet: View {
     // MARK: - 创建逻辑
 
     private func createChannel() async {
-        guard let userId = authManager.currentUser?.id else {
+        guard let userId = authManager.currentUserId else {
             errorMessage = "请先登录"
             return
         }

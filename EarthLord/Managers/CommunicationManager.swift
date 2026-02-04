@@ -15,6 +15,11 @@ import CoreLocation
 @MainActor
 class CommunicationManager: ObservableObject {
 
+    // MARK: - 常量
+
+    /// 官方频道ID
+    static let officialChannelId = UUID(uuidString: "00000000-0000-0000-0000-000000000000")!
+
     // MARK: - 单例
 
     static let shared = CommunicationManager()
@@ -50,6 +55,12 @@ class CommunicationManager: ObservableObject {
 
     /// 当前设备（新版）
     @Published private(set) var currentDevice: CommunicationDevice?
+
+    /// 用户呼号（Day 36）
+    @Published var userCallsign: String?
+
+    /// 频道摘要列表（Day 36）
+    @Published var channelSummaries: [ChannelSummary] = []
 
     // MARK: - 私有属性
 
@@ -1014,11 +1025,15 @@ class CommunicationManager: ObservableObject {
         let deviceType = currentDevice?.deviceType.rawValue ?? "unknown"
 
         do {
+            // 获取用户呼号
+            let callsign = AuthManager.shared.currentUser?.email ?? "匿名幸存者"
+
             // 构建 RPC 参数
             var params: [String: AnyJSON] = [
                 "p_channel_id": .string(channelId.uuidString),
                 "p_content": .string(content),
-                "p_device_type": .string(deviceType)
+                "p_device_type": .string(deviceType),
+                "p_callsign": .string(callsign)
             ]
 
             if let lat = latitude, let lng = longitude {
@@ -1253,6 +1268,153 @@ class CommunicationManager: ObservableObject {
 
         return isInRange
     }
+
+    // MARK: - 官方频道方法（Day 36）
+
+    /// 判断是否是官方频道
+    func isOfficialChannel(_ channelId: UUID) -> Bool {
+        channelId == CommunicationManager.officialChannelId
+    }
+
+    /// 确保用户已订阅官方频道
+    func ensureOfficialChannelSubscribed(userId: UUID) async {
+        // 检查是否已订阅
+        if isSubscribed(channelId: CommunicationManager.officialChannelId) {
+            print("✅ [官方频道] 用户已订阅官方频道")
+            return
+        }
+
+        print("🔄 [官方频道] 自动订阅官方频道...")
+
+        do {
+            let subscription = NewChannelSubscription(
+                userId: userId.uuidString,
+                channelId: CommunicationManager.officialChannelId.uuidString
+            )
+
+            try await supabase
+                .from("channel_subscriptions")
+                .insert(subscription)
+                .execute()
+
+            // 更新成员数
+            try await supabase
+                .from("communication_channels")
+                .update(["member_count": 1])  // 简化处理，实际应该 +1
+                .eq("id", value: CommunicationManager.officialChannelId.uuidString)
+                .execute()
+
+            print("✅ [官方频道] 自动订阅成功")
+
+            // 刷新订阅列表
+            await loadSubscribedChannels(userId: userId)
+        } catch {
+            print("⚠️ [官方频道] 自动订阅失败: \(error)")
+        }
+    }
+
+    /// 获取频道摘要列表（用于消息中心）
+    func getChannelSummaries() async {
+        print("🔄 [消息中心] 加载频道摘要...")
+
+        var summaries: [ChannelSummary] = []
+
+        // 1. 添加官方频道（置顶）
+        if let officialChannel = channels.first(where: { $0.id == CommunicationManager.officialChannelId })
+           ?? subscribedChannels.first(where: { $0.channel.id == CommunicationManager.officialChannelId })?.channel {
+            let officialMessages = channelMessages[officialChannel.id] ?? []
+            summaries.append(ChannelSummary(
+                channel: officialChannel,
+                latestMessage: officialMessages.last,
+                unreadCount: 0
+            ))
+        }
+
+        // 2. 添加其他已订阅频道
+        for subscribed in subscribedChannels {
+            // 跳过官方频道（已添加）
+            if subscribed.channel.id == CommunicationManager.officialChannelId { continue }
+
+            let messages = channelMessages[subscribed.channel.id] ?? []
+            summaries.append(ChannelSummary(
+                channel: subscribed.channel,
+                latestMessage: messages.last,
+                unreadCount: 0
+            ))
+        }
+
+        channelSummaries = summaries
+        print("✅ [消息中心] 加载了 \(summaries.count) 个频道摘要")
+    }
+
+    /// 加载所有订阅频道的最新消息
+    func loadAllChannelLatestMessages() async {
+        print("🔄 [消息中心] 加载所有频道最新消息...")
+
+        // 加载官方频道消息
+        await loadChannelMessages(channelId: CommunicationManager.officialChannelId, limit: 20)
+
+        // 加载其他订阅频道消息
+        for subscribed in subscribedChannels {
+            if subscribed.channel.id == CommunicationManager.officialChannelId { continue }
+            await loadChannelMessages(channelId: subscribed.channel.id, limit: 5)
+        }
+
+        // 更新摘要
+        await getChannelSummaries()
+    }
+
+    // MARK: - 呼号管理（Day 36）
+
+    /// 加载用户呼号
+    func loadUserCallsign(userId: UUID) async {
+        print("🔄 [呼号] 加载用户呼号...")
+
+        do {
+            let response: [UserProfile] = try await supabase
+                .from("profiles")
+                .select()
+                .eq("id", value: userId.uuidString)
+                .limit(1)
+                .execute()
+                .value
+
+            if let profile = response.first {
+                userCallsign = profile.callsign
+                print("✅ [呼号] 加载成功: \(profile.callsign ?? "未设置")")
+            }
+        } catch {
+            print("❌ [呼号] 加载失败: \(error)")
+        }
+    }
+
+    /// 更新用户呼号
+    func updateUserCallsign(userId: UUID, callsign: String?) async -> Bool {
+        print("🔄 [呼号] 更新用户呼号: \(callsign ?? "清除")")
+
+        do {
+            let update = CallsignUpdate(callsign: callsign)
+
+            try await supabase
+                .from("profiles")
+                .update(update)
+                .eq("id", value: userId.uuidString)
+                .execute()
+
+            userCallsign = callsign
+            print("✅ [呼号] 更新成功")
+            return true
+        } catch {
+            print("❌ [呼号] 更新失败: \(error)")
+            errorMessage = "更新呼号失败: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    /// 获取当前呼号（用于显示）
+    func getCurrentCallsign() -> String {
+        userCallsign ?? "未设置呼号"
+    }
 }
 
 // MARK: - 设备更新模型
@@ -1269,7 +1431,7 @@ private struct DeviceUnlockUpdate: Encodable {
 
 // MARK: - 频道订阅模型（Day 33）
 
-private struct NewChannelSubscription: Encodable {
+struct NewChannelSubscription: Encodable {
     let userId: String
     let channelId: String
 

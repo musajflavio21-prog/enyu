@@ -21,7 +21,7 @@ struct ChannelDetailView: View {
     @State private var errorMessage: String?
 
     private var isCreator: Bool {
-        authManager.currentUser?.id == channel.creatorId
+        authManager.currentUserId == channel.creatorId
     }
 
     private var isSubscribed: Bool {
@@ -323,7 +323,7 @@ struct ChannelDetailView: View {
     // MARK: - 操作方法
 
     private func subscribe() async {
-        guard let userId = authManager.currentUser?.id else { return }
+        guard let userId = authManager.currentUserId else { return }
 
         isProcessing = true
         errorMessage = nil
@@ -338,7 +338,7 @@ struct ChannelDetailView: View {
     }
 
     private func unsubscribe() async {
-        guard let userId = authManager.currentUser?.id else { return }
+        guard let userId = authManager.currentUserId else { return }
 
         isProcessing = true
         errorMessage = nil
