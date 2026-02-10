@@ -7,6 +7,7 @@
 
 import SwiftUI
 import GoogleSignIn
+import StoreKit
 import Combine
 
 @main
@@ -50,6 +51,11 @@ struct EarthLordApp: App {
                         .transition(.opacity)
                         .environmentObject(authManager)
                         .environmentObject(locationManager)
+                        .task {
+                            // 登录后加载内购产品和权益
+                            await StoreManager.shared.loadProducts()
+                            await StoreManager.shared.loadEntitlements()
+                        }
                 } else {
                     // 未登录：显示认证页面
                     AuthView()

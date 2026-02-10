@@ -1018,11 +1018,20 @@ class ExplorationManager: ObservableObject {
             return
         }
 
-        log("🔍 [POI] 开始搜索附近POI，限制数量: \(limit)")
+        // 高级雷达：增加POI数量和搜索范围
+        let adjustedLimit: Int
+        if StoreManager.shared.hasPremiumRadar {
+            adjustedLimit = limit + 5  // 多显示5个稀有POI
+            log("🔍 [POI] 高级雷达激活，额外显示5个POI")
+        } else {
+            adjustedLimit = limit
+        }
+
+        log("🔍 [POI] 开始搜索附近POI，限制数量: \(adjustedLimit)")
 
         POISearchManager.shared.searchNearbyPOIs(
             center: currentLocation,
-            limit: limit
+            limit: adjustedLimit
         ) { [weak self] pois in
             guard let self = self else { return }
 

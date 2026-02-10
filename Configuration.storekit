@@ -1,0 +1,358 @@
+{
+  "identifier" : "F0A1B2C3-D4E5-6789-ABCD-EF0123456789",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "6.0",
+      "familyShareable" : false,
+      "internalID" : "C001",
+      "localizations" : [
+        {
+          "description" : "60枚末日币",
+          "displayName" : "60末日币",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.coins.60",
+      "referenceName" : "60末日币",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "30.0",
+      "familyShareable" : false,
+      "internalID" : "C002",
+      "localizations" : [
+        {
+          "description" : "360枚末日币（超值）",
+          "displayName" : "360末日币",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.coins.360",
+      "referenceName" : "360末日币",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "98.0",
+      "familyShareable" : false,
+      "internalID" : "C003",
+      "localizations" : [
+        {
+          "description" : "1280枚末日币（最划算）",
+          "displayName" : "1280末日币",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.coins.1280",
+      "referenceName" : "1280末日币",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "12.0",
+      "familyShareable" : false,
+      "internalID" : "NC001",
+      "localizations" : [
+        {
+          "description" : "永久解锁无限通讯距离",
+          "displayName" : "卫星通讯设备",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.unlock.satellite",
+      "referenceName" : "卫星通讯设备",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "6.0",
+      "familyShareable" : false,
+      "internalID" : "NC002",
+      "localizations" : [
+        {
+          "description" : "永久增加5个领地槽位",
+          "displayName" : "领地扩展包",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.unlock.territory5",
+      "referenceName" : "领地扩展包",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "12.0",
+      "familyShareable" : false,
+      "internalID" : "NC003",
+      "localizations" : [
+        {
+          "description" : "探索时显示稀有POI",
+          "displayName" : "高级探索雷达",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.unlock.radar",
+      "referenceName" : "高级探索雷达",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "18.0",
+      "familyShareable" : false,
+      "internalID" : "NC004",
+      "localizations" : [
+        {
+          "description" : "永久增加30kg背包容量",
+          "displayName" : "超级背包",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.unlock.backpack",
+      "referenceName" : "超级背包",
+      "type" : "NonConsumable"
+    },
+    {
+      "displayPrice" : "6.0",
+      "familyShareable" : false,
+      "internalID" : "P001",
+      "localizations" : [
+        {
+          "description" : "水、食物、绷带、木材，新手应急必备",
+          "displayName" : "应急补给包",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.pack.basic",
+      "referenceName" : "应急补给包",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "18.0",
+      "familyShareable" : false,
+      "internalID" : "P002",
+      "localizations" : [
+        {
+          "description" : "大量建材，建造营火+避难所绰绰有余",
+          "displayName" : "建造者工具箱",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.pack.builder",
+      "referenceName" : "建造者工具箱",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "45.0",
+      "familyShareable" : false,
+      "internalID" : "P003",
+      "localizations" : [
+        {
+          "description" : "全面补给+30末日币，建造2-3个建筑",
+          "displayName" : "精英生存箱",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.pack.elite",
+      "referenceName" : "精英生存箱",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "98.0",
+      "familyShareable" : false,
+      "internalID" : "P004",
+      "localizations" : [
+        {
+          "description" : "海量物资+100末日币，建造所有基础建筑",
+          "displayName" : "传说军火库",
+          "locale" : "zh_CN"
+        }
+      ],
+      "productID" : "com.earthlord.pack.legendary",
+      "referenceName" : "传说军火库",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "APP001",
+    "_developerTeamID" : "TEAM001",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "zh_CN",
+    "_storefront" : "CHN",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "SG001",
+      "localizations" : [
+        {
+          "description" : "EarthLord VIP会员",
+          "displayName" : "VIP会员",
+          "locale" : "zh_CN"
+        }
+      ],
+      "name" : "VIP会员",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "12.0",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "SUB001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "领地10块、背包50kg、高级对讲机、每日奖励",
+              "displayName" : "幸存者VIP月卡",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.earthlord.vip.survivor.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "幸存者VIP月卡",
+          "subscriptionGroupID" : "SG001",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "98.0",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "SUB002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "领地10块、背包50kg、高级对讲机、每日奖励",
+              "displayName" : "幸存者VIP年卡",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.earthlord.vip.survivor.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "幸存者VIP年卡",
+          "subscriptionGroupID" : "SG001",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "30.0",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "SUB003",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "无限领地、背包100kg、军用通讯、AI物品2次/天、建造2倍速、专属徽章",
+              "displayName" : "领主VIP月卡",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.earthlord.vip.lord.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "领主VIP月卡",
+          "subscriptionGroupID" : "SG001",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "258.0",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "SUB004",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "无限领地、背包100kg、军用通讯、AI物品2次/天、建造2倍速、专属徽章",
+              "displayName" : "领主VIP年卡",
+              "locale" : "zh_CN"
+            }
+          ],
+          "productID" : "com.earthlord.vip.lord.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "领主VIP年卡",
+          "subscriptionGroupID" : "SG001",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

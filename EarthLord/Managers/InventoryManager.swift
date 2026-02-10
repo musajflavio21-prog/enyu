@@ -97,11 +97,15 @@ class InventoryManager: ObservableObject {
     /// 错误信息
     @Published var errorMessage: String?
 
-    /// 最大负重（kg）
-    let maxWeight: Double = 30.0
+    /// 最大负重（kg）— 根据VIP等级和购买动态计算
+    var maxWeight: Double {
+        StoreManager.shared.maxBackpackWeight
+    }
 
-    /// 最大容量（升）
-    let maxVolume: Double = 50.0
+    /// 最大容量（升）— 根据VIP等级动态计算
+    var maxVolume: Double {
+        StoreManager.shared.maxBackpackVolume
+    }
 
     // MARK: - 计算属性
 

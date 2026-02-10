@@ -157,6 +157,26 @@ class TerritoryManager: ObservableObject {
         }
     }
 
+    // MARK: - 领地限制检查
+
+    /// 检查是否可以圈新领地
+    /// - Returns: (可以圈地, 错误信息)
+    func canClaimNewTerritory() -> (allowed: Bool, message: String?) {
+        let currentCount = territories.filter {
+            $0.userId == AuthManager.shared.currentUser?.id.uuidString
+        }.count
+        let maxCount = StoreManager.shared.maxTerritoryCount
+
+        if currentCount >= maxCount {
+            let tier = StoreManager.shared.currentVIPTier
+            if tier == .lord {
+                return (false, "领地数量已达系统上限")
+            }
+            return (false, "领地数量已达上限(\(maxCount)块)，升级VIP可解锁更多领地")
+        }
+        return (true, nil)
+    }
+
     // MARK: - 上传方法
 
     /// 上传领地到 Supabase

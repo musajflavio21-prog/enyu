@@ -33,6 +33,9 @@ class StoreManager: ObservableObject {
     /// 非消耗品产品
     @Published var nonConsumables: [Product] = []
 
+    /// 物资包产品
+    @Published var resourcePacks: [Product] = []
+
     /// 用户权益
     @Published var entitlements: UserEntitlements = .defaultEntitlements
 
@@ -133,14 +136,18 @@ class StoreManager: ObservableObject {
                 StoreProductID(rawValue: product.id)?.productType == .subscription
             }.sorted { $0.price < $1.price }
             consumables = storeProducts.filter { product in
-                StoreProductID(rawValue: product.id)?.productType == .consumable
+                guard let pid = StoreProductID(rawValue: product.id) else { return false }
+                return pid.productType == .consumable && !pid.isResourcePack
+            }.sorted { $0.price < $1.price }
+            resourcePacks = storeProducts.filter { product in
+                StoreProductID(rawValue: product.id)?.isResourcePack == true
             }.sorted { $0.price < $1.price }
             nonConsumables = storeProducts.filter { product in
                 StoreProductID(rawValue: product.id)?.productType == .nonConsumable
             }.sorted { $0.price < $1.price }
 
             print("🛒 [商店] 加载了 \(storeProducts.count) 个产品")
-            print("🛒 [商店] 订阅: \(subscriptions.count), 消耗品: \(consumables.count), 非消耗品: \(nonConsumables.count)")
+            print("🛒 [商店] 订阅: \(subscriptions.count), 消耗品: \(consumables.count), 物资包: \(resourcePacks.count), 非消耗品: \(nonConsumables.count)")
         } catch {
             print("❌ [商店] 加载产品失败: \(error)")
             errorMessage = "加载商品失败，请稍后重试"
@@ -200,7 +207,14 @@ class StoreManager: ObservableObject {
                 await loadEntitlements()
 
                 let productId = StoreProductID(rawValue: product.id)
-                purchaseSuccessMessage = "成功购买 \(productId?.displayName ?? product.displayName)"
+
+                // 如果是物资包，刷新邮箱（物资已由服务端放入pending_items）
+                if let pid = productId, pid.isResourcePack {
+                    await MailboxManager.shared.loadPendingItems()
+                    purchaseSuccessMessage = "购买成功！物资已发送到邮箱，请前往领取"
+                } else {
+                    purchaseSuccessMessage = "成功购买 \(productId?.displayName ?? product.displayName)"
+                }
                 print("🛒 [商店] 购买成功: \(product.id)")
 
             case .userCancelled:

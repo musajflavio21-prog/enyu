@@ -704,6 +704,32 @@ class CommunicationManager: ObservableObject {
         devices.first(where: { $0.deviceType == deviceType })?.isUnlocked ?? false
     }
 
+    // MARK: - IAP设备解锁
+
+    /// 根据VIP等级和购买自动解锁通讯设备
+    func applyIAPDeviceUnlocks() async {
+        guard let userId = AuthManager.shared.currentUser?.id else { return }
+
+        let store = StoreManager.shared
+        let tier = store.currentVIPTier
+
+        // 幸存者VIP及以上 → 解锁营地电台
+        if tier >= .survivor {
+            if !isDeviceUnlocked(.campRadio) {
+                await unlockDevice(userId: userId, deviceType: .campRadio)
+                print("🔓 [通讯] VIP解锁: 营地电台")
+            }
+        }
+
+        // 领主VIP 或 购买了卫星通讯 → 解锁卫星设备
+        if tier >= .lord || store.hasSatelliteDevice {
+            if !isDeviceUnlocked(.satellite) {
+                await unlockDevice(userId: userId, deviceType: .satellite)
+                print("🔓 [通讯] VIP/购买解锁: 卫星通讯")
+            }
+        }
+    }
+
     // MARK: - 频道相关属性（Day 33）
 
     /// 所有公开频道

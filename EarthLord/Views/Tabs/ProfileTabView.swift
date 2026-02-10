@@ -10,8 +10,12 @@ import Supabase
 
 struct ProfileTabView: View {
     @EnvironmentObject var authManager: AuthManager
+    @StateObject private var storeManager = StoreManager.shared
+    @StateObject private var mailboxManager = MailboxManager.shared
     @State private var showLogoutAlert = false
     @State private var showDeleteAccountSheet = false
+    @State private var showStoreSheet = false
+    @State private var showMailboxSheet = false
     @State private var deleteConfirmText = ""
     @State private var isDeleting = false
     @State private var deleteErrorMessage: String?
@@ -27,6 +31,11 @@ struct ProfileTabView: View {
                     VStack(spacing: 24) {
                         // 用户头像和信息卡片
                         userInfoCard
+
+                        // 邮箱横幅（有待领取物资时显示）
+                        MailboxBannerView(mailboxManager: mailboxManager) {
+                            showMailboxSheet = true
+                        }
 
                         // 功能列表
                         menuSection
@@ -49,8 +58,17 @@ struct ProfileTabView: View {
             } message: {
                 Text("确定要退出登录吗？")
             }
+            .sheet(isPresented: $showStoreSheet) {
+                StoreView()
+            }
             .sheet(isPresented: $showDeleteAccountSheet) {
                 deleteAccountSheet
+            }
+            .sheet(isPresented: $showMailboxSheet) {
+                MailboxView()
+            }
+            .task {
+                await mailboxManager.loadPendingItems()
             }
         }
     }
@@ -273,16 +291,26 @@ struct ProfileTabView: View {
                 }
             }
 
-            // 用户名/邮箱
+            // 用户名/邮箱 + VIP徽章
             VStack(spacing: 4) {
-                Text(displayName)
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(ApocalypseTheme.textPrimary)
+                HStack(spacing: 8) {
+                    Text(displayName)
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(ApocalypseTheme.textPrimary)
+
+                    VIPBadgeLargeView(tier: storeManager.currentVIPTier)
+                }
 
                 Text(authManager.currentUser?.email ?? "未知邮箱")
                     .font(.subheadline)
                     .foregroundColor(ApocalypseTheme.textSecondary)
+
+                // 末日币余额
+                if storeManager.coinBalance > 0 {
+                    CoinBalanceView()
+                        .padding(.top, 4)
+                }
             }
 
             // 用户ID（开发调试用）
@@ -311,6 +339,45 @@ struct ProfileTabView: View {
             Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
 
             menuItem(icon: "bell.badge", title: "通知设置", subtitle: "推送和提醒")
+            Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
+
+            // 商店入口
+            Button(action: { showStoreSheet = true }) {
+                HStack(spacing: 16) {
+                    Image(systemName: "bag.fill")
+                        .font(.title2)
+                        .foregroundColor(ApocalypseTheme.warning)
+                        .frame(width: 32)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text("商店")
+                                .font(.body)
+                                .foregroundColor(ApocalypseTheme.textPrimary)
+
+                            Text("NEW")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(ApocalypseTheme.primary)
+                                .cornerRadius(3)
+                        }
+
+                        Text("VIP会员、末日币、物资包、功能解锁")
+                            .font(.caption)
+                            .foregroundColor(ApocalypseTheme.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(ApocalypseTheme.textSecondary)
+                }
+                .padding()
+                .contentShape(Rectangle())
+            }
             Divider().background(ApocalypseTheme.textSecondary.opacity(0.3))
 
             menuItem(icon: "questionmark.circle", title: "帮助与反馈", subtitle: "常见问题和意见反馈")

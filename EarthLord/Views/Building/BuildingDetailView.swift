@@ -41,6 +41,9 @@ struct BuildingDetailView: View {
     /// 是否显示错误弹窗
     @State private var showError = false
 
+    /// 是否显示加速确认
+    @State private var showSpeedUpAlert = false
+
     /// 定时器触发器（用于刷新进度）
     @State private var timerTrigger = false
 
@@ -97,6 +100,11 @@ struct BuildingDetailView: View {
                     // 建造进度（如果建造中）
                     if building.status == .constructing, let template = template {
                         constructionProgressSection(template: template)
+
+                        // 末日币加速按钮
+                        if let cost = buildingManager.speedUpCost(for: building) {
+                            speedUpButton(cost: cost)
+                        }
                     }
 
                     // 升级区域（如果已完成）
@@ -148,6 +156,19 @@ struct BuildingDetailView: View {
                 Button("确定", role: .cancel) {}
             } message: {
                 Text(errorMessage ?? "未知错误")
+            }
+            // 加速确认弹窗
+            .alert("立即完成", isPresented: $showSpeedUpAlert) {
+                Button("取消", role: .cancel) {}
+                Button("确认加速") {
+                    Task { await speedUpBuilding() }
+                }
+            } message: {
+                if let cost = buildingManager.speedUpCost(for: building) {
+                    Text("花费 \(cost) 末日币立即完成建造？")
+                } else {
+                    Text("确认加速？")
+                }
             }
             .onAppear {
                 startTimerIfNeeded()
@@ -375,6 +396,36 @@ struct BuildingDetailView: View {
         }
     }
 
+    /// 末日币加速按钮
+    private func speedUpButton(cost: Int) -> some View {
+        Button(action: { showSpeedUpAlert = true }) {
+            HStack {
+                Image(systemName: "bolt.fill")
+                    .foregroundColor(.yellow)
+                Text("用末日币加速")
+                    .fontWeight(.medium)
+                Spacer()
+                CoinBalanceCompactView(balance: cost)
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(
+                LinearGradient(
+                    colors: [Color.orange.opacity(0.3), Color.yellow.opacity(0.2)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .foregroundColor(.white)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.orange.opacity(0.5), lineWidth: 1)
+            )
+        }
+        .disabled(isLoading)
+    }
+
     /// 拆除按钮
     private var demolishButton: some View {
         Button(action: { showDemolishAlert = true }) {
@@ -445,6 +496,24 @@ struct BuildingDetailView: View {
         isLoading = true
 
         let result = await buildingManager.upgradeBuilding(buildingId: building.id)
+
+        isLoading = false
+
+        switch result {
+        case .success:
+            onUpdate?()
+            dismiss()
+        case .failure(let error):
+            errorMessage = error.errorDescription
+            showError = true
+        }
+    }
+
+    /// 末日币加速建造
+    private func speedUpBuilding() async {
+        isLoading = true
+
+        let result = await buildingManager.speedUpConstruction(buildingId: building.id)
 
         isLoading = false
 

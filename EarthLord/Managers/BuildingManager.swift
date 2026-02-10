@@ -187,6 +187,19 @@ class BuildingManager: ObservableObject {
         }
 
         // 6. 创建建筑记录
+        // 应用VIP建造速度加成：调整建造开始时间使进度更快
+        let speedMultiplier = StoreManager.shared.buildSpeedMultiplier
+        let adjustedStartDate: Date
+        if speedMultiplier > 1.0 {
+            // 通过向前偏移开始时间来模拟加速
+            let totalBuildTime = Double(template.buildTimeSeconds)
+            let timeToSkip = totalBuildTime * (1.0 - 1.0 / speedMultiplier)
+            adjustedStartDate = Date().addingTimeInterval(-timeToSkip)
+            print("🏗️ [BuildingManager] VIP加速: \(speedMultiplier)倍速，提前 \(Int(timeToSkip)) 秒")
+        } else {
+            adjustedStartDate = Date()
+        }
+
         let newBuilding = NewPlayerBuilding(
             userId: userId.uuidString,
             territoryId: territoryId,
@@ -196,7 +209,7 @@ class BuildingManager: ObservableObject {
             level: 1,
             locationLat: location?.lat,
             locationLon: location?.lon,
-            buildStartedAt: Date()
+            buildStartedAt: adjustedStartDate
         )
 
         do {
@@ -504,6 +517,53 @@ class BuildingManager: ObservableObject {
         if !hasConstructing {
             stopConstructionTimer()
         }
+    }
+
+    // MARK: - 末日币加速
+
+    /// 用末日币加速建造（立即完成）
+    /// - Parameter buildingId: 建筑ID
+    /// - Returns: 是否成功
+    func speedUpConstruction(buildingId: UUID) async -> Result<PlayerBuilding, BuildingError> {
+        guard let index = playerBuildings.firstIndex(where: { $0.id == buildingId }) else {
+            return .failure(.buildingNotFound)
+        }
+
+        let building = playerBuildings[index]
+        guard building.status == .constructing else {
+            return .failure(.invalidStatus)
+        }
+
+        guard let template = getTemplate(byId: building.templateId) else {
+            return .failure(.templateNotFound)
+        }
+
+        // 计算加速费用：每分钟剩余时间1末日币，最少1币
+        let remainingSeconds = building.remainingBuildTime(template: template)
+        let cost = max(1, Int(ceil(remainingSeconds / 60.0)))
+
+        let success = await StoreManager.shared.spendCoins(
+            amount: cost,
+            reason: "建造加速",
+            referenceId: buildingId.uuidString
+        )
+
+        guard success else {
+            return .failure(.databaseError("末日币不足，需要 \(cost) 枚"))
+        }
+
+        print("🏗️ [BuildingManager] 花费 \(cost) 末日币加速建造")
+        return await completeConstruction(buildingId: buildingId)
+    }
+
+    /// 计算加速建造所需末日币
+    func speedUpCost(for building: PlayerBuilding) -> Int? {
+        guard building.status == .constructing,
+              let template = getTemplate(byId: building.templateId) else {
+            return nil
+        }
+        let remainingSeconds = building.remainingBuildTime(template: template)
+        return max(1, Int(ceil(remainingSeconds / 60.0)))
     }
 
     // MARK: - 删除

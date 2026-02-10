@@ -4,5 +4,9 @@
 <dict>
 	<key>com.apple.developer.game-center</key>
 	<true/>
+	<key>com.apple.developer.in-app-payments</key>
+	<array>
+		<string>merchant.com.shangey.earthlord</string>
+	</array>
 </dict>
 </plist>
